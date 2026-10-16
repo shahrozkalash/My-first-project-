@@ -100,11 +100,35 @@ export interface VideoEngineHealth {
   provider?: string;
   engineUrlDisplay: string;
   model: string;
+  helperVersion?: string;
+  isEngineRunning?: boolean;
+  currentLoadedModel?: string | null;
   hardware?: {
+    cuda_available?: boolean;
     gpu_name?: string;
     vram_total_gb?: number;
     vram_free_gb?: number;
+    disk_free_gb?: number;
+    disk_total_gb?: number;
     recommended_model?: string;
+    hardware_tier?: string;
+    cpu_count?: number;
+  };
+  models?: Record<string, {
+    name: string;
+    downloaded: boolean;
+    min_vram_gb: number;
+    download_size_gb: number;
+    compatible: boolean;
+  }>;
+  downloadState?: {
+    is_downloading: boolean;
+    model_id: string | null;
+    progress_percent: number;
+    downloaded_bytes: number;
+    total_bytes: number;
+    status: string;
+    error?: string;
   };
   supportedModels: string[];
   supportedResolutions: string[];
@@ -117,7 +141,7 @@ export interface VideoEngineHealth {
 export interface VideoEngineJobStatus {
   jobId: string;
   sceneId: string;
-  status: 'queued' | 'processing' | 'completed' | 'failed';
+  status: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
   progress: number;
   etaSeconds?: number;
   videoUrl?: string;

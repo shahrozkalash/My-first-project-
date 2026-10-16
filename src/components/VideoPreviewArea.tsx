@@ -19,6 +19,7 @@ import {
   Info,
 } from 'lucide-react';
 import { AspectRatio, Project, Scene, VideoEngineHealth, VideoEngineJobStatus } from '../types';
+import { localHelperClient } from '../utils/localHelperClient';
 import {
   downloadFile,
   exportVeoBatchPrompts,
@@ -72,9 +73,24 @@ export const VideoPreviewArea: React.FC<VideoPreviewAreaProps> = ({
   const checkEngineStatus = async () => {
     setIsCheckingEngine(true);
     try {
-      const res = await fetch('/api/video/engine/status');
-      const data = await res.json();
-      setEngineHealth(data);
+      const diag = await localHelperClient.probeHealth();
+      if (diag.isOnline && diag.health) {
+        setEngineHealth(diag.health);
+      } else {
+        setEngineHealth({
+          configured: false,
+          reachable: false,
+          engineType: 'wan',
+          engineUrlDisplay: diag.url || 'http://127.0.0.1:8000',
+          model: 'wan-2.1-t2v-1.4b',
+          supportedModels: ['wan-2.1-t2v-1.4b', 'wan-2.1-t2v-14b'],
+          supportedResolutions: ['720p', '480p'],
+          supportedAspectRatios: ['16:9', '9:16'],
+          message: diag.errorMessage || 'Could not contact local Windows Helper. Ensure start.bat is running on your PC.',
+          lastChecked: new Date().toISOString(),
+          zeroCostGuaranteed: true,
+        });
+      }
     } catch (e: any) {
       setEngineHealth({
         configured: false,
@@ -87,6 +103,7 @@ export const VideoPreviewArea: React.FC<VideoPreviewAreaProps> = ({
         supportedAspectRatios: ['16:9', '9:16'],
         message: 'Could not contact backend video engine service.',
         lastChecked: new Date().toISOString(),
+        zeroCostGuaranteed: true,
       });
     } finally {
       setIsCheckingEngine(false);
@@ -103,16 +120,16 @@ export const VideoPreviewArea: React.FC<VideoPreviewAreaProps> = ({
     if (activeJobId && isGenerating) {
       interval = setInterval(async () => {
         try {
-          const res = await fetch(`/api/video/engine/job/${encodeURIComponent(activeJobId)}`);
-          if (res.ok) {
-            const job: VideoEngineJobStatus = await res.json();
+          const job = await localHelperClient.getJobStatus(activeJobId);
+          if (job) {
             setGenerationProgress(job.progress || 0);
-            if (job.status === 'completed' && job.videoUrl) {
+            const finishedVideo = job.videoUrl || (job as any).video_url;
+            if (job.status === 'completed' && finishedVideo) {
               setIsGenerating(false);
               setActiveJobId(null);
-              setGenerationStatusText('Generation completed!');
+              setGenerationStatusText('Generation completed on local GPU!');
               if (onSceneVideoReady && activeScene) {
-                onSceneVideoReady(activeScene.id, job.videoUrl);
+                onSceneVideoReady(activeScene.id, finishedVideo);
               }
             } else if (job.status === 'failed') {
               setIsGenerating(false);
@@ -179,35 +196,36 @@ export const VideoPreviewArea: React.FC<VideoPreviewAreaProps> = ({
     setGenerationStatusText('Submitting prompt to Wan video engine...');
 
     try {
-      const res = await fetch('/api/video/engine/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sceneId: activeScene.id,
-          sceneNumber: activeScene.sceneNumber,
-          prompt: activeScene.visualPrompt,
-          aspectRatio: project.aspectRatio,
-          duration: activeScene.duration,
-          resolution: project.aspectRatio === '9:16' ? '720x1280' : '1280x720',
-          characterConsistencyTags: project.characters.map((c) => c.name),
-        }),
-      });
+      const payload = {
+        sceneId: activeScene.id,
+        sceneNumber: activeScene.sceneNumber,
+        prompt: activeScene.visualPrompt,
+        aspectRatio: project.aspectRatio,
+        aspect_ratio: project.aspectRatio,
+        duration: activeScene.duration,
+        duration_seconds: activeScene.duration,
+        resolution: project.aspectRatio === '9:16' ? '720x1280' : '1280x720',
+        characterConsistencyTags: project.characters.map((c) => c.name),
+        cameraMovement: activeScene.cameraMovement,
+        lighting: activeScene.lighting,
+      };
 
-      const data = await res.json();
+      const data = await localHelperClient.submitJob(payload);
 
-      if (!res.ok || !data.success) {
+      if (!data || (!data.success && !data.jobId && !data.job_id)) {
         setIsGenerating(false);
         setGenerationProgress(0);
         setEngineError(
-          data.message || 'Wan Video Engine is not connected or inference server is unreachable.'
+          data?.message || data?.error || 'Wan Video Engine is not connected or inference server is unreachable.'
         );
         return;
       }
 
-      if (data.jobId) {
-        setActiveJobId(data.jobId);
+      const jobId = data.jobId || data.job_id;
+      if (jobId) {
+        setActiveJobId(jobId);
         setGenerationProgress(15);
-        setGenerationStatusText(`Job queued (${data.jobId.slice(0, 8)}...). Initializing Wan diffusion latents...`);
+        setGenerationStatusText(`Job queued (${jobId.slice(0, 8)}...). Initializing Wan diffusion latents...`);
       }
     } catch (err: any) {
       setIsGenerating(false);

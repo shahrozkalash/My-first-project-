@@ -11,8 +11,8 @@ import {
 } from 'lucide-react';
 
 interface NavbarProps {
-  currentTab: 'studio' | 'projects' | 'api-info';
-  setCurrentTab: (tab: 'studio' | 'projects' | 'api-info') => void;
+  currentTab: 'studio' | 'projects' | 'local-engine' | 'api-info';
+  setCurrentTab: (tab: 'studio' | 'projects' | 'local-engine' | 'api-info') => void;
   onNewProject: () => void;
   onOpenExportModal: () => void;
   projectCount: number;
@@ -89,15 +89,15 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           <button
-            onClick={() => setCurrentTab('api-info')}
+            onClick={() => setCurrentTab('local-engine')}
             className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all ${
-              currentTab === 'api-info'
+              currentTab === 'local-engine' || currentTab === 'api-info'
                 ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm shadow-purple-600/30'
                 : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
             }`}
           >
             <Cpu className="w-3.5 h-3.5 text-purple-400" />
-            Wan Video Engine
+            Local Engine
           </button>
         </nav>
 

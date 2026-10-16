@@ -738,7 +738,7 @@ export const SceneList: React.FC<SceneListProps> = ({
                               className="px-3 py-1 bg-purple-600/30 hover:bg-purple-600 text-purple-200 hover:text-white border border-purple-500/40 text-[11px] font-semibold rounded-lg flex items-center gap-1.5 transition-all active:scale-95"
                             >
                               <Zap className="w-3 h-3" />
-                              <span>Generate Video</span>
+                              <span>Render Shot (WAN)</span>
                             </button>
                           )}
                         </div>

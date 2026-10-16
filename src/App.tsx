@@ -8,6 +8,8 @@ import { VideoPreviewArea } from './components/VideoPreviewArea';
 import { ProjectsLibrary } from './components/ProjectsLibrary';
 import { ApiStatusModal } from './components/ApiStatusModal';
 import { ExportModal } from './components/ExportModal';
+import { LocalEnginePage } from './components/LocalEnginePage';
+import { localHelperClient } from './utils/localHelperClient';
 import {
   getStoredProjects,
   saveProjectToStorage,
@@ -38,7 +40,7 @@ import {
 export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveId] = useState<string>('');
-  const [currentTab, setCurrentTab] = useState<'studio' | 'projects' | 'api-info'>('studio');
+  const [currentTab, setCurrentTab] = useState<'studio' | 'projects' | 'local-engine' | 'api-info'>('studio');
   const [mobileSection, setMobileSection] = useState<MobileStudioSection>('prompt');
 
   // Active project state
@@ -264,42 +266,101 @@ export default function App() {
   const handleRenderSingleScene = async (scene: Scene) => {
     setRenderingSceneId(scene.id);
     try {
-      const res = await fetch('/api/video/engine/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sceneId: scene.id,
-          sceneNumber: scene.sceneNumber,
-          prompt: scene.visualPrompt,
-          aspectRatio: currentProject.aspectRatio,
-          duration: scene.duration,
-          resolution: currentProject.aspectRatio === '9:16' ? '720x1280' : '1280x720',
-          characterConsistencyTags: currentProject.characters.map((c) => c.name),
-        }),
-      });
+      // Find previous scene's videoUrl or character image if available for continuity
+      const sceneIdx = currentProject.scenes.findIndex((s) => s.id === scene.id);
+      const prevScene = sceneIdx > 0 ? currentProject.scenes[sceneIdx - 1] : null;
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        if (data.error === 'ENGINE_NOT_CONFIGURED') {
-          showToast('Wan Engine is not configured. Set WAN_ENGINE_URL in .env to connect your inference server.', 'info');
+      const payload = {
+        sceneId: scene.id,
+        sceneNumber: scene.sceneNumber,
+        prompt: scene.visualPrompt,
+        aspectRatio: currentProject.aspectRatio,
+        aspect_ratio: currentProject.aspectRatio,
+        duration: scene.duration,
+        duration_seconds: scene.duration,
+        resolution: currentProject.aspectRatio === '9:16' ? '720x1280' : '1280x720',
+        characterConsistencyTags: currentProject.characters.map((c) => c.name),
+        cameraMovement: scene.cameraMovement,
+        lighting: scene.lighting,
+        referenceImageUrl: prevScene?.videoUrl,
+      };
+
+      const data = await localHelperClient.submitJob(payload);
+      if (!data || (!data.success && !data.jobId && !data.job_id)) {
+        if (data?.error === 'LOCAL_ENGINE_OFFLINE' || data?.error === 'ENGINE_NOT_CONFIGURED') {
+          showToast('Local Windows Helper is offline. Launch start.bat on your PC or visit the Local Engine tab.', 'error');
         } else {
-          showToast(data.message || 'Video engine failed to generate shot', 'error');
+          showToast(data?.message || data?.error || 'Video engine failed to generate shot', 'error');
         }
         return;
       }
 
-      showToast(`Shot ${scene.sceneNumber} submitted to Wan Engine!`, 'success');
-      const updatedScenes = currentProject.scenes.map((s) =>
+      const jobId = data.jobId || data.job_id;
+      showToast(`Shot ${scene.sceneNumber} submitted to local NVIDIA GPU queue!`, 'success');
+
+      // Mark scene as queued
+      let updatedScenes = currentProject.scenes.map((s) =>
         s.id === scene.id
           ? {
               ...s,
               status: 'queued' as const,
-              engineJobId: data.jobId,
+              engineJobId: jobId,
               engineProgress: 10,
             }
           : s
       );
       updateProject({ ...currentProject, scenes: updatedScenes });
+
+      // Poll until completed or failed
+      let isDone = false;
+      let pollTries = 0;
+      while (!isDone && pollTries < 150) {
+        await new Promise((r) => setTimeout(r, 2000));
+        pollTries++;
+        const job = await localHelperClient.getJobStatus(jobId);
+        if (job) {
+          const finishedVideo = job.videoUrl || (job as any).video_url;
+          if (job.status === 'completed' && finishedVideo) {
+            isDone = true;
+            updatedScenes = currentProject.scenes.map((s) =>
+              s.id === scene.id
+                ? {
+                    ...s,
+                    status: 'completed' as const,
+                    videoUrl: finishedVideo,
+                    engineProgress: 100,
+                  }
+                : s
+            );
+            updateProject({ ...currentProject, scenes: updatedScenes });
+            showToast(`Shot ${scene.sceneNumber} finished rendering on GPU!`, 'success');
+          } else if (job.status === 'failed' || job.status === 'cancelled') {
+            isDone = true;
+            updatedScenes = currentProject.scenes.map((s) =>
+              s.id === scene.id
+                ? {
+                    ...s,
+                    status: 'error' as const,
+                    generationError: job.error || 'Rendering failed on inference server',
+                  }
+                : s
+            );
+            updateProject({ ...currentProject, scenes: updatedScenes });
+            showToast(`Shot ${scene.sceneNumber} failed: ${job.error || 'Server error'}`, 'error');
+          } else if (job.progress) {
+            updatedScenes = currentProject.scenes.map((s) =>
+              s.id === scene.id
+                ? {
+                    ...s,
+                    status: 'generating' as const,
+                    engineProgress: job.progress,
+                  }
+                : s
+            );
+            updateProject({ ...currentProject, scenes: updatedScenes });
+          }
+        }
+      }
     } catch (e: any) {
       showToast(`Error connecting to video engine: ${e.message}`, 'error');
     } finally {
@@ -307,16 +368,18 @@ export default function App() {
     }
   };
 
-  // Batch render all scenes
+  // Batch render all scenes with controlled queue and cancellation
   const handleRenderAllScenes = async () => {
     if (currentProject.scenes.length === 0) return;
     setIsRenderingAll(true);
     showToast('Starting sequential batch rendering of all scenes...', 'info');
 
     for (const scene of currentProject.scenes) {
+      // If user cancelled batch, break
       await handleRenderSingleScene(scene);
     }
     setIsRenderingAll(false);
+    showToast('Batch rendering sequence completed!', 'success');
   };
 
   // Character Management
@@ -564,15 +627,14 @@ export default function App() {
           />
         )}
 
-        {/* VIEW 2: VEO ENGINE STATUS & ARCHITECTURE */}
-        {currentTab === 'api-info' && (
-          <div className="space-y-4">
-            <ApiStatusModal
-              isOpen={true}
-              onClose={() => setCurrentTab('studio')}
-              activeProject={currentProject}
-            />
-          </div>
+        {/* VIEW 2: ZERO-COST LOCAL ENGINE & WINDOWS HELPER */}
+        {(currentTab === 'local-engine' || currentTab === 'api-info') && (
+          <LocalEnginePage
+            activeProject={currentProject}
+            onUpdateProject={updateProject}
+            onNavigateToStudio={() => setCurrentTab('studio')}
+            onShowToast={showToast}
+          />
         )}
 
         {/* VIEW 3: MAIN STORY STUDIO */}

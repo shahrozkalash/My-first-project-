@@ -1,0 +1,11 @@
+fastapi>=0.110.0
+uvicorn>=0.28.0
+pydantic>=2.6.0
+huggingface_hub>=0.23.0
+diffusers>=0.32.0
+transformers>=4.48.0
+accelerate>=1.2.0
+sentencepiece
+imageio[ffmpeg]
+psutil
+requests

@@ -2,9 +2,13 @@ import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
+import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type } from '@google/genai';
 import { wanVideoEngine } from './src/server/videoEngine.ts';
+
+const require = createRequire(import.meta.url);
+const archiver = require('archiver');
 
 dotenv.config();
 
@@ -680,6 +684,131 @@ app.get('/api/video/engine/video/:jobId', async (req, res) => {
     res.send(Buffer.from(arrayBuffer));
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to stream video' });
+  }
+});
+
+// 7. Windows Local Helper Download & Control APIs
+// One-click downloadable ZIP archive containing the complete Windows Local Helper
+app.get('/api/download/windows-helper', (req, res) => {
+  try {
+    const helperDir = path.resolve(__dirname, 'windows-helper');
+    if (!fs.existsSync(helperDir)) {
+      return res.status(404).json({ error: 'windows-helper directory not found' });
+    }
+
+    res.attachment('StoryMotion-AI-Windows-Helper.zip');
+    res.setHeader('Content-Type', 'application/zip');
+
+    const archive = typeof archiver === 'function'
+      ? archiver('zip', { zlib: { level: 9 } })
+      : new archiver.ZipArchive({ zlib: { level: 9 } });
+
+    archive.on('error', (err: any) => {
+      console.error('Archive build error:', err);
+      if (!res.headersSent) {
+        res.status(500).send({ error: err.message });
+      }
+    });
+
+    archive.pipe(res);
+    archive.directory(helperDir, 'StoryMotion-AI-Windows-Helper');
+    archive.finalize();
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to generate Windows Helper package' });
+  }
+});
+
+// Pair local helper token
+app.post('/api/helper/pair', (req, res) => {
+  const { token, engineUrl } = req.body;
+  if (token) wanVideoEngine.setPairingToken(token);
+  if (engineUrl) wanVideoEngine.setEngineUrl(engineUrl);
+  res.json({ success: true, message: 'Local pairing credentials updated' });
+});
+
+// Proxy system check
+app.get('/api/helper/status', async (req, res) => {
+  try {
+    const health = await wanVideoEngine.checkHealth();
+    res.json(health);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Helper status check failed' });
+  }
+});
+
+// Proxy model download trigger
+app.post('/api/helper/model/download', async (req, res) => {
+  try {
+    const { modelId } = req.body;
+    if (!modelId) return res.status(400).json({ error: 'modelId is required' });
+    const result = await wanVideoEngine.downloadModel(modelId);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to trigger model download' });
+  }
+});
+
+// Proxy cancel model download
+app.post('/api/helper/model/cancel-download', async (req, res) => {
+  try {
+    const result = await wanVideoEngine.cancelDownload();
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to cancel download' });
+  }
+});
+
+// Proxy start engine
+app.post('/api/helper/engine/start', async (req, res) => {
+  try {
+    const { modelId } = req.body;
+    const result = await wanVideoEngine.startEngine(modelId || 'wan-2.1-t2v-1.4b');
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to start engine' });
+  }
+});
+
+// Proxy stop engine
+app.post('/api/helper/engine/stop', async (req, res) => {
+  try {
+    const result = await wanVideoEngine.stopEngine();
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to stop engine' });
+  }
+});
+
+// Proxy test engine (1-second smoke test)
+app.post('/api/helper/engine/test', async (req, res) => {
+  try {
+    const result = await wanVideoEngine.submitTestJob();
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Test video generation failed' });
+  }
+});
+
+// Proxy fetch live helper logs
+app.get('/api/helper/logs', async (req, res) => {
+  try {
+    const limit = Number(req.query.limit) || 100;
+    const logs = await wanVideoEngine.getLogs(limit);
+    res.json(logs);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to retrieve logs' });
+  }
+});
+
+// Proxy cancel job
+app.post('/api/helper/job/cancel', async (req, res) => {
+  try {
+    const { jobId } = req.body;
+    if (!jobId) return res.status(400).json({ error: 'jobId is required' });
+    const result = await wanVideoEngine.cancelJob(jobId);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to cancel job' });
   }
 });
 

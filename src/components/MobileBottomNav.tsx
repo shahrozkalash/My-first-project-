@@ -5,13 +5,14 @@ import {
   Clapperboard,
   PlaySquare,
   FolderOpen,
+  Cpu,
 } from 'lucide-react';
 
 export type MobileStudioSection = 'prompt' | 'characters' | 'scenes' | 'preview';
 
 interface MobileBottomNavProps {
-  currentTab: 'studio' | 'projects' | 'api-info';
-  setCurrentTab: (tab: 'studio' | 'projects' | 'api-info') => void;
+  currentTab: 'studio' | 'projects' | 'local-engine' | 'api-info';
+  setCurrentTab: (tab: 'studio' | 'projects' | 'local-engine' | 'api-info') => void;
   studioSection: MobileStudioSection;
   setStudioSection: (sec: MobileStudioSection) => void;
   sceneCount: number;
@@ -26,7 +27,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   sceneCount,
   characterCount,
 }) => {
-  const handleNav = (tab: 'studio' | 'projects' | 'api-info', section?: MobileStudioSection) => {
+  const handleNav = (tab: 'studio' | 'projects' | 'local-engine' | 'api-info', section?: MobileStudioSection) => {
     setCurrentTab(tab);
     if (section) {
       setStudioSection(section);
@@ -100,7 +101,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       {/* 5. Projects Library */}
       <button
         onClick={() => handleNav('projects')}
-        className={`flex flex-col items-center justify-center min-h-[48px] py-1 px-2.5 rounded-lg transition-all active:scale-95 ${
+        className={`flex flex-col items-center justify-center min-h-[48px] py-1 px-2 rounded-lg transition-all active:scale-95 ${
           currentTab === 'projects'
             ? 'text-purple-400 font-semibold'
             : 'text-zinc-400 hover:text-zinc-200'
@@ -108,6 +109,19 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       >
         <FolderOpen className="w-4 h-4 mb-0.5" />
         <span className="text-[10px]">Projects</span>
+      </button>
+
+      {/* 6. Local Engine */}
+      <button
+        onClick={() => handleNav('local-engine')}
+        className={`flex flex-col items-center justify-center min-h-[48px] py-1 px-2 rounded-lg transition-all active:scale-95 ${
+          currentTab === 'local-engine'
+            ? 'text-purple-400 font-semibold'
+            : 'text-zinc-400 hover:text-zinc-200'
+        }`}
+      >
+        <Cpu className="w-4 h-4 mb-0.5" />
+        <span className="text-[10px]">Local Engine</span>
       </button>
     </div>
   );
