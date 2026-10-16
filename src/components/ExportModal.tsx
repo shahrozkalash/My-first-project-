@@ -434,8 +434,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 StoryMotion AI is built to operate with <strong>zero paid services</strong>. All video diffusion happens on your own computer using open-source WAN weights:
               </p>
               <div className="font-mono text-[10px] text-zinc-300 bg-black/50 p-2 rounded border border-zinc-800/80 space-y-0.5">
-                <div><strong className="text-purple-400">WAN_ENGINE_URL:</strong> http://127.0.0.1:8000 (Local Python inference server)</div>
-                <div><strong className="text-purple-400">WAN_MODEL:</strong> wan-2.1-t2v-1.4b (Free open-source weights from Hugging Face)</div>
+                <div><strong className="text-purple-400">WAN Inference:</strong> http://127.0.0.1:8000 (Local Python helper, zero cost)</div>
+                <div><strong className="text-purple-400">Default Model:</strong> wan-2.1-t2v-1.4b (Free open-source weights from Hugging Face)</div>
                 <div><strong className="text-emerald-400">Assembly:</strong> Free local FFmpeg concat script (zero fees)</div>
                 <div><strong className="text-blue-400">Story Director:</strong> Built-in local director engine (100% offline & free)</div>
               </div>

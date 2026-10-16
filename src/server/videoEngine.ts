@@ -238,7 +238,7 @@ export class WanVideoEngine {
         supportedModels,
         supportedResolutions,
         supportedAspectRatios,
-        message: `Local Windows Helper is offline at ${urlDisplay}. Launch "windows-helper\\start.bat" or "scripts\\run_local_wan.bat" on your Windows 11 PC.`,
+        message: `Local Windows Helper is offline at ${urlDisplay}. All story planning, scene direction, character consistency, and audio features remain fully functional. To render GPU video with Wan 2.1, launch "windows-helper\\start.bat" on your Windows PC.`,
         lastChecked: new Date().toISOString(),
         zeroCostGuaranteed: true,
       };
@@ -427,7 +427,7 @@ export class WanVideoEngine {
       return {
         success: false,
         error: 'LOCAL_ENGINE_OFFLINE',
-        message: `Local Windows Helper is offline at ${this.config.engineUrl}. Launch "windows-helper\\start.bat" on your Windows 11 machine.`,
+        message: `Local Windows Helper is not connected at ${this.config.engineUrl}. Launch "windows-helper\\start.bat" on your Windows PC to render videos on your GPU. In the meantime, story planning, script editing, audio mixing, and batch prompt export are fully available.`,
         payloadSnippet: wanPayload,
       };
     }

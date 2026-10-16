@@ -35,6 +35,7 @@ interface VideoPreviewAreaProps {
   onSelectSceneIndex: (index: number) => void;
   onOpenVeoModal: () => void;
   onSceneVideoReady?: (sceneId: string, videoUrl: string) => void;
+  onNavigateToLocalEngine?: () => void;
 }
 
 export const VideoPreviewArea: React.FC<VideoPreviewAreaProps> = ({
@@ -43,6 +44,7 @@ export const VideoPreviewArea: React.FC<VideoPreviewAreaProps> = ({
   onSelectSceneIndex,
   onOpenVeoModal,
   onSceneVideoReady,
+  onNavigateToLocalEngine,
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -422,6 +424,16 @@ export const VideoPreviewArea: React.FC<VideoPreviewAreaProps> = ({
             </p>
             <p className="text-zinc-300 text-[11px] leading-relaxed">{engineError}</p>
             <div className="flex items-center gap-2 pt-1 flex-wrap">
+              {onNavigateToLocalEngine && (
+                <button
+                  type="button"
+                  onClick={onNavigateToLocalEngine}
+                  className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium text-[11px] flex items-center gap-1 shadow-sm transition-colors"
+                >
+                  <Cpu className="w-3 h-3" />
+                  <span>Setup Local Helper</span>
+                </button>
+              )}
               <button
                 onClick={() => {
                   setPayloadType('wan');

@@ -276,7 +276,7 @@ export const ApiStatusModal: React.FC<ApiStatusModalProps> = ({
                   http://127.0.0.1:8000
                 </p>
                 <p className="text-zinc-400 text-[11px]">
-                  Configured in <code className="text-purple-300">.env</code> as <code className="text-purple-300">WAN_ENGINE_URL</code>. Keeps all processing on your local machine.
+                  Default loopback address. No environment variables required; configure or pair directly in the Local Engine tab.
                 </p>
               </div>
             </div>

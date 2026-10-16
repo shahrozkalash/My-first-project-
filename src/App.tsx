@@ -789,6 +789,7 @@ export default function App() {
                     currentSceneIndex={selectedSceneIndex}
                     onSelectSceneIndex={setSelectedSceneIndex}
                     onOpenVeoModal={() => setIsApiModalOpen(true)}
+                    onNavigateToLocalEngine={() => setCurrentTab('local-engine')}
                     onSceneVideoReady={(sceneId, videoUrl) => {
                       const updatedScenes = currentProject.scenes.map((s) =>
                         s.id === sceneId ? { ...s, videoUrl, status: 'completed' as const } : s
