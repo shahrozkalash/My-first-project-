@@ -12,9 +12,10 @@ import {
   Lightbulb,
   Check,
   Swords,
+  Monitor,
 } from 'lucide-react';
-import { VISUAL_STYLES, PROMPT_INSPIRATIONS } from '../data/constants';
-import { AspectRatio, VisualStyle, Character } from '../types';
+import { VISUAL_STYLES, PROMPT_INSPIRATIONS, VIDEO_RESOLUTIONS } from '../data/constants';
+import { AspectRatio, VisualStyle, Character, VideoResolution } from '../types';
 import { formatDuration, DURATION_PRESETS } from '../utils/duration';
 
 interface StoryPromptInputProps {
@@ -24,6 +25,8 @@ interface StoryPromptInputProps {
   setStyle: (s: VisualStyle) => void;
   aspectRatio: AspectRatio;
   setAspectRatio: (ar: AspectRatio) => void;
+  videoResolution?: VideoResolution;
+  setVideoResolution?: (res: VideoResolution) => void;
   totalDuration: number;
   setTotalDuration: (d: number) => void;
   numScenes: number;
@@ -43,6 +46,8 @@ export const StoryPromptInput: React.FC<StoryPromptInputProps> = ({
   setStyle,
   aspectRatio,
   setAspectRatio,
+  videoResolution = '720p',
+  setVideoResolution,
   totalDuration,
   setTotalDuration,
   numScenes,
@@ -219,6 +224,92 @@ export const StoryPromptInput: React.FC<StoryPromptInputProps> = ({
                   <span className="text-[9px] uppercase tracking-wider font-semibold text-purple-300/80 mt-1">
                     {styleOpt.badge}
                   </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Video Output Quality Selector */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs font-semibold text-zinc-300 flex-wrap gap-1">
+            <div className="flex items-center gap-1.5">
+              <Monitor className="w-3.5 h-3.5 text-blue-400" />
+              <span>Video Output Quality & Resolution</span>
+              <span className="text-[10px] text-zinc-400 font-mono">
+                ({aspectRatio === '9:16' ? 'Vertical 9:16' : 'Landscape 16:9'})
+              </span>
+            </div>
+            <span className="text-[11px] text-zinc-400 font-normal">
+              Applied to every scene render, video job & final MP4 export
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            {VIDEO_RESOLUTIONS.map((resOpt) => {
+              const isSelected = (videoResolution || '720p') === resOpt.id;
+              const dims = aspectRatio === '9:16' ? resOpt.portraitDimensions : resOpt.landscapeDimensions;
+
+              return (
+                <button
+                  key={resOpt.id}
+                  type="button"
+                  onClick={() => setVideoResolution?.(resOpt.id)}
+                  disabled={isGenerating}
+                  className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden flex flex-col justify-between ${
+                    isSelected
+                      ? resOpt.id === '1080p'
+                        ? 'border-purple-500 bg-purple-950/30 ring-1 ring-purple-400 shadow-lg shadow-purple-600/20'
+                        : resOpt.id === '720p'
+                        ? 'border-blue-500 bg-blue-950/30 ring-1 ring-blue-400 shadow-lg shadow-blue-600/20'
+                        : 'border-emerald-500 bg-emerald-950/30 ring-1 ring-emerald-400 shadow-lg shadow-emerald-600/20'
+                      : 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-700 hover:bg-zinc-900'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-1">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-white tracking-tight">
+                          {resOpt.label}
+                        </span>
+                        {resOpt.id === '720p' && (
+                          <span className="px-1.5 py-0.2 text-[9px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded">
+                            Default
+                          </span>
+                        )}
+                        {resOpt.id === '480p' && (
+                          <span className="px-1.5 py-0.2 text-[9px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded">
+                            Fast
+                          </span>
+                        )}
+                        {resOpt.id === '1080p' && (
+                          <span className="px-1.5 py-0.2 text-[9px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded">
+                            Full HD
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] font-mono text-zinc-200 font-bold block mt-0.5">
+                        {dims.display}
+                      </span>
+                    </div>
+
+                    {isSelected && (
+                      <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center shrink-0">
+                        <Check className="w-2.5 h-2.5 text-white stroke-[3]" />
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="text-[10px] text-zinc-400 mt-1.5 leading-snug">
+                    {resOpt.tagline} · {resOpt.resourceDescription}
+                  </p>
+
+                  <div className="mt-2 pt-1.5 border-t border-zinc-800/80 flex items-center justify-between text-[9px] font-mono text-zinc-400">
+                    <span>{resOpt.nativeWanSupport ? '✓ Native Diffusion' : '★ Local Lanczos Upscale'}</span>
+                    <span className="text-zinc-500 font-medium">
+                      {resOpt.resourceLevel === 'lower' ? 'Low VRAM (~4GB)' : resOpt.resourceLevel === 'balanced' ? '8-12GB VRAM' : '12GB+ VRAM'}
+                    </span>
+                  </div>
                 </button>
               );
             })}

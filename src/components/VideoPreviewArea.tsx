@@ -18,9 +18,10 @@ import {
   Zap,
   Info,
 } from 'lucide-react';
-import { AspectRatio, Project, Scene, VideoEngineHealth, VideoEngineJobStatus } from '../types';
+import { AspectRatio, Project, Scene, VideoEngineHealth, VideoEngineJobStatus, VideoResolution } from '../types';
 import { localHelperClient } from '../utils/localHelperClient';
 import { storyMotionAudioEngine } from '../utils/audioEngine';
+import { getResolutionDimensions } from '../data/constants';
 import {
   downloadFile,
   exportVeoBatchPrompts,
@@ -209,6 +210,8 @@ export const VideoPreviewArea: React.FC<VideoPreviewAreaProps> = ({
     setGenerationStatusText('Submitting prompt to Wan video engine...');
 
     try {
+      const targetRes = project.videoResolution || '720p';
+      const dims = getResolutionDimensions(targetRes, project.aspectRatio);
       const payload = {
         sceneId: activeScene.id,
         sceneNumber: activeScene.sceneNumber,
@@ -217,7 +220,8 @@ export const VideoPreviewArea: React.FC<VideoPreviewAreaProps> = ({
         aspect_ratio: project.aspectRatio,
         duration: activeScene.duration,
         duration_seconds: activeScene.duration,
-        resolution: project.aspectRatio === '9:16' ? '720x1280' : '1280x720',
+        target_resolution: targetRes,
+        resolution: `${dims.width}x${dims.height}`,
         characterConsistencyTags: project.characters.map((c) => c.name),
         cameraMovement: activeScene.cameraMovement,
         lighting: activeScene.lighting,
@@ -510,7 +514,7 @@ export const VideoPreviewArea: React.FC<VideoPreviewAreaProps> = ({
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                   <span className="font-mono font-bold uppercase tracking-wider text-white">
-                    {project.style} · {project.aspectRatio}
+                    {project.style} · {project.aspectRatio} · {project.videoResolution || '720p'} ({getResolutionDimensions(project.videoResolution || '720p', project.aspectRatio).display})
                   </span>
                 </div>
                 <div className="flex items-center gap-2 font-mono">

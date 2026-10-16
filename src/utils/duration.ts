@@ -193,3 +193,73 @@ export function formatTimecode(seconds: number): string {
   }
   return `${mins < 10 ? '0' : ''}${mins}:${remainingSecs < 10 ? '0' : ''}${remainingSecs}`;
 }
+
+/**
+ * Computes the starting timestamp (in seconds) for each scene in the list.
+ * scenes[0] starts at 0.
+ * scenes[i] starts at sum(scenes[0..i-1].duration).
+ */
+export function calculateSceneStartTimes(scenes: Scene[]): number[] {
+  const startTimes: number[] = [];
+  let running = 0;
+  for (const s of scenes) {
+    startTimes.push(running);
+    running += Math.max(1, Number(s.duration) || 1);
+  }
+  return startTimes;
+}
+
+/**
+ * Adjusts the boundary between scene[boundaryIndex] and scene[boundaryIndex + 1]
+ * to newBoundaryTime (seconds from project start).
+ *
+ * Preserves the combined duration of the two adjacent scenes, thereby
+ * keeping the overall project duration 100% constant.
+ * Guarantees each adjacent scene has at least minDuration (default 1s).
+ */
+export function adjustSceneBoundary(
+  scenes: Scene[],
+  boundaryIndex: number,
+  newBoundaryTime: number,
+  minDuration: number = 1
+): Scene[] {
+  if (!scenes || scenes.length <= 1) return scenes;
+  if (boundaryIndex < 0 || boundaryIndex >= scenes.length - 1) return scenes;
+
+  const startTimes = calculateSceneStartTimes(scenes);
+  const leftStart = startTimes[boundaryIndex];
+  const rightEnd =
+    startTimes[boundaryIndex + 2] !== undefined
+      ? startTimes[boundaryIndex + 2]
+      : leftStart +
+        (Number(scenes[boundaryIndex].duration) || 1) +
+        (Number(scenes[boundaryIndex + 1].duration) || 1);
+
+  // Clamped target boundary time
+  const minBoundaryTime = leftStart + minDuration;
+  const maxBoundaryTime = rightEnd - minDuration;
+
+  if (minBoundaryTime > maxBoundaryTime) {
+    return scenes;
+  }
+
+  const clampedTime = Math.max(
+    minBoundaryTime,
+    Math.min(maxBoundaryTime, Math.round(newBoundaryTime))
+  );
+
+  const newLeftDuration = clampedTime - leftStart;
+  const newRightDuration = rightEnd - clampedTime;
+
+  const updated = [...scenes];
+  updated[boundaryIndex] = {
+    ...scenes[boundaryIndex],
+    duration: newLeftDuration,
+  };
+  updated[boundaryIndex + 1] = {
+    ...scenes[boundaryIndex + 1],
+    duration: newRightDuration,
+  };
+
+  return updated;
+}

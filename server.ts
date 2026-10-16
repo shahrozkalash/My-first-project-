@@ -1200,6 +1200,30 @@ app.post('/api/helper/audio/mix/assemble', async (req, res) => {
   }
 });
 
+// Proxy local FFmpeg multi-scene master movie assembly at exact requested resolution
+app.post(['/api/helper/video/assemble-movie', '/api/video/assemble-movie'], async (req, res) => {
+  try {
+    const { title, aspectRatio = '16:9', resolution = '720p', scenes = [] } = req.body;
+    if (!scenes || !Array.isArray(scenes) || scenes.length === 0) {
+      return res.status(400).json({ error: 'Scenes array is required for movie assembly' });
+    }
+
+    const result = await wanVideoEngine.assembleMovie({
+      title: title || 'StoryMotion Movie',
+      aspectRatio,
+      resolution,
+      scenes,
+    });
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      error: 'HELPER_OFFLINE',
+      message: `Failed to contact local Windows Helper for MP4 assembly: ${err.message || err}. Ensure windows-helper\\start.bat is running on your machine.`,
+    });
+  }
+});
+
 // ========================================================
 // 11. Zero-Cost Local Fight Scene Planner Endpoints
 // ========================================================

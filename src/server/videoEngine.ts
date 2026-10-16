@@ -157,7 +157,11 @@ export class WanVideoEngine {
       'wan-2.1-i2v-14b-480p (Image-to-Video with character keyframes - Zero cost)',
     ];
 
-    const supportedResolutions = ['720p (1280x720 / 720x1280)', '480p (832x480 / 480x832)'];
+    const supportedResolutions = [
+      '480p (854x480 / 480x854 - Lower Resource Usage)',
+      '720p (1280x720 / 720x1280 - Balanced Quality & Performance - Native)',
+      '1080p (1920x1080 / 1080x1920 - Full HD / High-Fidelity Lanczos Upscale)',
+    ];
     const supportedAspectRatios = ['16:9', '9:16'];
     const urlDisplay = this.config.engineUrl || 'http://127.0.0.1:8000';
 
@@ -347,7 +351,24 @@ export class WanVideoEngine {
 
     const nativeDuration = Math.max(1, Math.min(10, req.duration || 5));
     const numFrames = Math.min(81, Math.max(16, Math.round(nativeDuration * 16)));
-    const resolutionString = req.aspectRatio === '9:16' ? '720x1280' : '1280x720';
+
+    const isPortrait = req.aspectRatio === '9:16';
+    const reqRes = (req.resolution || '720p').toLowerCase();
+    let targetRes = '720p';
+    let width = isPortrait ? 720 : 1280;
+    let height = isPortrait ? 1280 : 720;
+
+    if (reqRes.includes('480')) {
+      targetRes = '480p';
+      width = isPortrait ? 480 : 854;
+      height = isPortrait ? 854 : 480;
+    } else if (reqRes.includes('1080')) {
+      targetRes = '1080p';
+      width = isPortrait ? 1080 : 1920;
+      height = isPortrait ? 1920 : 1080;
+    }
+
+    const resolutionString = `${width}x${height}`;
 
     const wanPayload = {
       sceneId: req.sceneId,
@@ -358,6 +379,9 @@ export class WanVideoEngine {
         'distorted face, blurry, low resolution, flickering, morphing limbs, extra fingers, jittery motion, artifacts, watermark',
       aspect_ratio: req.aspectRatio,
       resolution: resolutionString,
+      target_resolution: targetRes,
+      width,
+      height,
       duration_seconds: nativeDuration,
       num_frames: numFrames,
       fps: 16,
@@ -531,6 +555,25 @@ export class WanVideoEngine {
    */
   public async assembleFinalMp4(payload: any): Promise<any> {
     const endpoint = `${this.config.engineUrl.replace(/\/+$/, '')}/api/audio/mix/assemble`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return res.json();
+  }
+
+  /**
+   * Assembles all project scenes into a unified master MP4 at the exact requested quality:
+   * 480p (854x480), 720p HD (1280x720), or 1080p Full HD (1920x1080 via Lanczos upscale)
+   */
+  public async assembleMovie(payload: {
+    title: string;
+    aspectRatio?: string;
+    resolution?: string;
+    scenes: any[];
+  }): Promise<any> {
+    const endpoint = `${this.config.engineUrl.replace(/\/+$/, '')}/api/video/assemble-movie`;
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: this.getAuthHeaders(),

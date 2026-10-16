@@ -1,4 +1,49 @@
-import { CameraMovement, LightingMood, Project, StyleOption } from '../types';
+import { AspectRatio, CameraMovement, LightingMood, Project, StyleOption, VideoResolution, VideoResolutionOption } from '../types';
+
+export const VIDEO_RESOLUTIONS: VideoResolutionOption[] = [
+  {
+    id: '480p',
+    label: '480p',
+    tagline: 'Lower resource usage',
+    landscapeDimensions: { width: 854, height: 480, display: '854 × 480' },
+    portraitDimensions: { width: 480, height: 854, display: '480 × 854' },
+    resourceLevel: 'lower',
+    resourceDescription: 'Fastest generation, ~4GB-6GB VRAM, lowest memory footprint',
+    vramGuidance: 'Ideal for 6GB-8GB GPUs or rapid storyboard drafting',
+    nativeWanSupport: true,
+  },
+  {
+    id: '720p',
+    label: '720p HD',
+    tagline: 'Balanced quality & performance',
+    landscapeDimensions: { width: 1280, height: 720, display: '1280 × 720' },
+    portraitDimensions: { width: 720, height: 1280, display: '720 × 1280' },
+    resourceLevel: 'balanced',
+    resourceDescription: 'Native WAN 2.1 resolution, crisp HD detail, ~8GB-12GB VRAM',
+    vramGuidance: 'Standard recommended resolution for high fidelity without VRAM exhaustion',
+    nativeWanSupport: true,
+  },
+  {
+    id: '1080p',
+    label: '1080p Full HD',
+    tagline: 'Highest output resolution',
+    landscapeDimensions: { width: 1920, height: 1080, display: '1920 × 1080' },
+    portraitDimensions: { width: 1080, height: 1920, display: '1080 × 1920' },
+    resourceLevel: 'highest',
+    resourceDescription: 'Full HD output via native 720p diffusion + high-fidelity local Lanczos upscale with unsharp filter',
+    vramGuidance: 'Higher compute & disk requirement, ~12GB-16GB+ VRAM recommended',
+    nativeWanSupport: false,
+    upscalingMethod: 'High-Fidelity Local Lanczos Upscaling with FFmpeg',
+  },
+];
+
+export function getResolutionDimensions(
+  resolution: VideoResolution = '720p',
+  aspectRatio: AspectRatio = '16:9'
+): { width: number; height: number; display: string } {
+  const opt = VIDEO_RESOLUTIONS.find((r) => r.id === resolution) || VIDEO_RESOLUTIONS[1];
+  return aspectRatio === '9:16' ? opt.portraitDimensions : opt.landscapeDimensions;
+}
 
 export const VISUAL_STYLES: StyleOption[] = [
   {
@@ -95,6 +140,7 @@ export const SAMPLE_PROJECTS: Project[] = [
     genre: 'Cyberpunk Noir',
     style: 'cinematic',
     aspectRatio: '16:9',
+    videoResolution: '720p',
     totalDuration: 60,
     sceneDuration: 15,
     numScenes: 4,

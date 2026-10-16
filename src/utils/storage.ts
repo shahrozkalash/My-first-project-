@@ -16,6 +16,7 @@ export function getStoredProjects(): Project[] {
     if (Array.isArray(parsed) && parsed.length > 0) {
       return parsed.map((p: any) => ({
         ...p,
+        videoResolution: p.videoResolution || '720p',
         totalDuration: Number(p.totalDuration) || 60,
       }));
     }
@@ -30,8 +31,9 @@ export function saveProjectToStorage(project: Project): void {
   try {
     const projects = getStoredProjects();
     const existingIndex = projects.findIndex((p) => p.id === project.id);
-    const updatedProject = {
+    const updatedProject: Project = {
       ...project,
+      videoResolution: project.videoResolution || '720p',
       totalDuration: Number(project.totalDuration) || 60,
       updatedAt: new Date().toISOString(),
     };
@@ -111,6 +113,7 @@ export function createNewProjectTemplate(): Project {
     genre: 'Cinematic',
     style: 'cinematic',
     aspectRatio: '16:9',
+    videoResolution: '720p',
     totalDuration: 60,
     sceneDuration: 15,
     numScenes: 4,

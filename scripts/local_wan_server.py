@@ -126,9 +126,22 @@ def generate_video_task(job_id: str, req: GenerationRequest):
         output_filename = f"wan_scene_{job_id}.mp4"
         output_filepath = OUTPUT_DIR / output_filename
 
-        # Width and height mapping for Wan 2.1
-        width = 1280 if req.aspect_ratio == "16:9" else 720
-        height = 720 if req.aspect_ratio == "16:9" else 1280
+        # Width and height mapping based on requested video quality
+        is_portrait = (req.aspect_ratio == "9:16")
+        res_str = (req.resolution or "720p").lower()
+        if "480" in res_str:
+            width = 480 if is_portrait else 854
+            height = 854 if is_portrait else 480
+            target_res = "480p"
+        elif "1080" in res_str:
+            width = 1080 if is_portrait else 1920
+            height = 1920 if is_portrait else 1080
+            target_res = "1080p"
+        else:
+            width = 720 if is_portrait else 1280
+            height = 1280 if is_portrait else 720
+            target_res = "720p"
+
         num_frames = req.num_frames or 81  # ~5.06s at 16fps
 
         # Check if diffusers/torch pipeline is available locally

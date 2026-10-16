@@ -293,6 +293,21 @@ export class LocalHelperClient {
     });
   }
 
+  /**
+   * Assembles all project scenes into a unified master MP4 at exact requested resolution (480p, 720p, 1080p)
+   */
+  public async assembleMovie(payload: {
+    title: string;
+    aspectRatio?: string;
+    resolution?: string;
+    scenes: any[];
+  }): Promise<any> {
+    return this.request('/api/video/assemble-movie', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
   // Fight Scene Planner Local LLM APIs
   public async getLlmModels(): Promise<any> {
     return this.request('/api/llm/models', {

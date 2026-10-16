@@ -4,6 +4,7 @@ import { MobileBottomNav, MobileStudioSection } from './components/MobileBottomN
 import { StoryPromptInput } from './components/StoryPromptInput';
 import { CharacterConsistencyManager } from './components/CharacterConsistencyManager';
 import { SceneList } from './components/SceneList';
+import { TimelineScrubber } from './components/TimelineScrubber';
 import { VideoPreviewArea } from './components/VideoPreviewArea';
 import { ProjectsLibrary } from './components/ProjectsLibrary';
 import { ApiStatusModal } from './components/ApiStatusModal';
@@ -21,12 +22,14 @@ import {
   setActiveProjectId,
   createNewProjectTemplate,
 } from './utils/storage';
-import { AspectRatio, Character, Project, Scene, VisualStyle } from './types';
+import { AspectRatio, Character, Project, Scene, VisualStyle, VideoResolution } from './types';
+import { getResolutionDimensions } from './data/constants';
 import {
   DEFAULT_TOTAL_DURATION,
   distributeTotalDuration,
   recalculateSceneDurations,
   redistributeScenesEvenly,
+  calculateSceneStartTimes,
 } from './utils/duration';
 import {
   Sparkles,
@@ -48,6 +51,8 @@ export default function App() {
   // Active project state
   const [currentProject, setCurrentProject] = useState<Project>(createNewProjectTemplate());
   const [selectedSceneIndex, setSelectedSceneIndex] = useState<number>(0);
+  const [timelineCurrentTime, setTimelineCurrentTime] = useState<number>(0);
+  const [timelineIsPlaying, setTimelineIsPlaying] = useState<boolean>(false);
 
   // Async / generation states
   const [isGeneratingStory, setIsGeneratingStory] = useState(false);
@@ -273,6 +278,9 @@ export default function App() {
       const sceneIdx = currentProject.scenes.findIndex((s) => s.id === scene.id);
       const prevScene = sceneIdx > 0 ? currentProject.scenes[sceneIdx - 1] : null;
 
+      const targetRes = currentProject.videoResolution || '720p';
+      const dims = getResolutionDimensions(targetRes, currentProject.aspectRatio);
+
       const payload = {
         sceneId: scene.id,
         sceneNumber: scene.sceneNumber,
@@ -281,7 +289,8 @@ export default function App() {
         aspect_ratio: currentProject.aspectRatio,
         duration: scene.duration,
         duration_seconds: scene.duration,
-        resolution: currentProject.aspectRatio === '9:16' ? '720x1280' : '1280x720',
+        target_resolution: targetRes,
+        resolution: `${dims.width}x${dims.height}`,
         characterConsistencyTags: currentProject.characters.map((c) => c.name),
         cameraMovement: scene.cameraMovement,
         lighting: scene.lighting,
@@ -463,6 +472,22 @@ export default function App() {
       scenes: updatedScenes,
     });
     showToast(`Evenly balanced ${targetTotal}s across ${updatedScenes.length} scenes!`, 'success');
+  };
+
+  const handleUpdateScenesFromTimeline = (updatedScenes: Scene[]) => {
+    updateProject({
+      ...currentProject,
+      scenes: updatedScenes,
+      numScenes: updatedScenes.length,
+    });
+  };
+
+  const handleSelectSceneFromTimeline = (index: number) => {
+    setSelectedSceneIndex(index);
+    if (currentProject.scenes[index]) {
+      const starts = calculateSceneStartTimes(currentProject.scenes);
+      setTimelineCurrentTime(starts[index] || 0);
+    }
   };
 
   const handleTotalDurationChange = (newTotal: number) => {
@@ -717,6 +742,11 @@ export default function App() {
                     setStyle={(s) => updateProject({ ...currentProject, style: s })}
                     aspectRatio={currentProject.aspectRatio}
                     setAspectRatio={(ar) => updateProject({ ...currentProject, aspectRatio: ar })}
+                    videoResolution={currentProject.videoResolution || '720p'}
+                    setVideoResolution={(res) => {
+                      updateProject({ ...currentProject, videoResolution: res });
+                      showToast(`Project video quality set to ${res}`, 'info');
+                    }}
                     totalDuration={currentProject.totalDuration || DEFAULT_TOTAL_DURATION}
                     setTotalDuration={handleTotalDurationChange}
                     numScenes={currentProject.numScenes}
@@ -744,7 +774,24 @@ export default function App() {
                 </div>
 
                 {/* 3. Sequential Scene List & Prompts */}
-                <div className={`md:block ${mobileSection === 'scenes' ? 'block' : 'hidden'}`}>
+                <div className={`md:block space-y-5 ${mobileSection === 'scenes' ? 'block' : 'hidden'}`}>
+                  {currentProject.scenes.length > 0 && (
+                    <TimelineScrubber
+                      scenes={currentProject.scenes}
+                      totalDuration={currentProject.totalDuration || DEFAULT_TOTAL_DURATION}
+                      currentSceneIndex={selectedSceneIndex}
+                      videoResolution={currentProject.videoResolution || '720p'}
+                      aspectRatio={currentProject.aspectRatio}
+                      onSelectSceneIndex={handleSelectSceneFromTimeline}
+                      onUpdateScenes={handleUpdateScenesFromTimeline}
+                      onRedistributeEvenly={handleRedistributeEvenly}
+                      currentTime={timelineCurrentTime}
+                      onTimeChange={setTimelineCurrentTime}
+                      isPlaying={timelineIsPlaying}
+                      onTogglePlay={() => setTimelineIsPlaying((p) => !p)}
+                    />
+                  )}
+
                   <SceneList
                     scenes={currentProject.scenes}
                     characters={currentProject.characters}
@@ -760,7 +807,11 @@ export default function App() {
                     enhancingSceneId={enhancingSceneId}
                     onSelectSceneForPreview={(scene) => {
                       const idx = currentProject.scenes.findIndex((s) => s.id === scene.id);
-                      if (idx >= 0) setSelectedSceneIndex(idx);
+                      if (idx >= 0) {
+                        setSelectedSceneIndex(idx);
+                        const starts = calculateSceneStartTimes(currentProject.scenes);
+                        setTimelineCurrentTime(starts[idx] || 0);
+                      }
                       if (window.innerWidth < 768) setMobileSection('preview');
                     }}
                     selectedSceneId={currentProject.scenes[selectedSceneIndex]?.id}

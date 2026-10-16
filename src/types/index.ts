@@ -1,5 +1,20 @@
 export type AspectRatio = '16:9' | '9:16';
 
+export type VideoResolution = '480p' | '720p' | '1080p';
+
+export interface VideoResolutionOption {
+  id: VideoResolution;
+  label: string;
+  tagline: string;
+  landscapeDimensions: { width: number; height: number; display: string };
+  portraitDimensions: { width: number; height: number; display: string };
+  resourceLevel: 'lower' | 'balanced' | 'highest';
+  resourceDescription: string;
+  vramGuidance: string;
+  nativeWanSupport: boolean;
+  upscalingMethod?: string;
+}
+
 export type VisualStyle =
   | 'cinematic'
   | 'realistic-3d'
@@ -198,6 +213,7 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   isFavorite?: boolean;
+  videoResolution?: VideoResolution;
   audioSettings?: AudioSettings;
   musicTrack?: MusicTrackConfig;
   language?: SupportedLanguage | string;
