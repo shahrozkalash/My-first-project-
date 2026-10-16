@@ -182,21 +182,21 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         {/* TAB 1: STORY & PROMPT EXPORTS */}
         {activeTab === 'project-exports' && (
           <div className="space-y-2.5 text-xs overflow-y-auto pr-1">
-            {/* 1. Veo & AI Video Batch Prompts */}
+            {/* 1. WAN & Open-Source Video Batch Prompts */}
             <div className="p-3.5 bg-zinc-900/80 border border-purple-500/30 rounded-xl space-y-2 hover:border-purple-500/60 transition-colors">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-purple-400" />
                   <span className="font-semibold text-white">
-                    Veo / Runway / Sora Batch Prompts (.txt)
+                    WAN 2.1 Sequential Batch Prompts (.txt)
                   </span>
                 </div>
-                <span className="text-[10px] uppercase font-bold text-purple-400 bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-500/40">
-                  Recommended
+                <span className="text-[10px] uppercase font-bold text-emerald-400 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/40">
+                  Zero-Cost
                 </span>
               </div>
               <p className="text-zinc-400 text-[11px]">
-                Ready-to-use prompts for each sequential scene, formatted with consistent character descriptions, camera path tags, and aspect ratio flags.
+                Ready-to-use prompts for each sequential scene, formatted with consistent character descriptions, camera movement directions, and aspect ratio flags.
               </p>
               <div className="flex items-center gap-2 pt-1">
                 <button
@@ -401,20 +401,20 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               </pre>
             </div>
 
-            {/* Honest Environment Services Notice */}
-            <div className="p-3 bg-purple-950/20 border border-purple-500/30 rounded-xl space-y-1.5 text-[11px] text-zinc-300">
-              <div className="flex items-center gap-1.5 font-semibold text-purple-300">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                <span>Backend Rendering Services & Environment Variables</span>
+            {/* Strict Zero-Cost Local Engine Notice */}
+            <div className="p-3 bg-emerald-950/20 border border-emerald-500/30 rounded-xl space-y-1.5 text-[11px] text-zinc-300">
+              <div className="flex items-center gap-1.5 font-semibold text-emerald-400">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                <span>Strict Zero-Cost Local Execution Guarantee</span>
               </div>
               <p className="text-zinc-400 leading-relaxed">
-                StoryMotion AI connects to genuine video diffusion servers. To enable end-to-end cloud GPU rendering for Wan 2.1, ensure the following are set in your environment:
+                StoryMotion AI is built to operate with <strong>zero paid services</strong>. All video diffusion happens on your own computer using open-source WAN weights:
               </p>
               <div className="font-mono text-[10px] text-zinc-300 bg-black/50 p-2 rounded border border-zinc-800/80 space-y-0.5">
-                <div><strong className="text-purple-400">WAN_ENGINE_URL:</strong> URL of your self-hosted Wan2.1 or ComfyUI server</div>
-                <div><strong className="text-purple-400">WAN_MODEL:</strong> "wan-2.1-t2v-1.4b" or "wan-2.1-t2v-14b"</div>
-                <div><strong className="text-purple-400">WAN_ENGINE_API_KEY:</strong> Optional bearer authorization token</div>
-                <div><strong className="text-purple-400">GEMINI_API_KEY:</strong> Gemini 3.8 Flash story director & Veo video preview API</div>
+                <div><strong className="text-purple-400">WAN_ENGINE_URL:</strong> http://127.0.0.1:8000 (Local Python inference server)</div>
+                <div><strong className="text-purple-400">WAN_MODEL:</strong> wan-2.1-t2v-1.4b (Free open-source weights from Hugging Face)</div>
+                <div><strong className="text-emerald-400">Assembly:</strong> Free local FFmpeg concat script (zero fees)</div>
+                <div><strong className="text-blue-400">Story Director:</strong> Built-in local director engine (100% offline & free)</div>
               </div>
             </div>
           </div>

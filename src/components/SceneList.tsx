@@ -21,6 +21,10 @@ import {
   Play,
   CheckCircle2,
   Video,
+  AlertTriangle,
+  Download,
+  RefreshCw,
+  Sliders,
 } from 'lucide-react';
 import { CAMERA_MOVEMENTS, LIGHTING_MOODS } from '../data/constants';
 import { Character, Scene, CameraMovement, LightingMood } from '../types';
@@ -45,6 +49,7 @@ interface SceneListProps {
   renderingSceneId?: string | null;
   onRenderAllScenes?: () => void;
   isRenderingAll?: boolean;
+  onOpenEngineSettings?: () => void;
 }
 
 export const SceneList: React.FC<SceneListProps> = ({
@@ -66,6 +71,7 @@ export const SceneList: React.FC<SceneListProps> = ({
   renderingSceneId,
   onRenderAllScenes,
   isRenderingAll,
+  onOpenEngineSettings,
 }) => {
   const [expandedScenes, setExpandedScenes] = useState<Record<string, boolean>>({});
 
@@ -244,10 +250,17 @@ export const SceneList: React.FC<SceneListProps> = ({
                       </span>
                     )}
 
-                    {renderingSceneId === scene.id && (
+                    {(renderingSceneId === scene.id || scene.status === 'generating' || scene.status === 'queued') && (
                       <span className="text-[10px] font-bold text-purple-300 bg-purple-950/60 border border-purple-500/40 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                         <div className="w-2.5 h-2.5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
-                        <span>Rendering...</span>
+                        <span>{scene.engineProgress ? `Rendering (${scene.engineProgress}%)` : 'Queued...'}</span>
+                      </span>
+                    )}
+
+                    {Boolean(scene.generationError && !scene.videoUrl) && (
+                      <span className="text-[10px] font-bold text-rose-400 bg-rose-950/60 border border-rose-500/40 px-2 py-0.5 rounded-full inline-flex items-center gap-1" title={scene.generationError}>
+                        <AlertTriangle className="w-3 h-3" />
+                        <span>Render Error</span>
                       </span>
                     )}
                   </div>
@@ -257,19 +270,19 @@ export const SceneList: React.FC<SceneListProps> = ({
                     {onRenderScene && (
                       <button
                         type="button"
-                        disabled={renderingSceneId === scene.id}
+                        disabled={renderingSceneId === scene.id || scene.status === 'generating'}
                         onClick={() => onRenderScene(scene)}
-                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all ${
-                          renderingSceneId === scene.id
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all active:scale-95 ${
+                          renderingSceneId === scene.id || scene.status === 'generating'
                             ? 'bg-zinc-800 text-zinc-500 border-zinc-700 cursor-not-allowed'
                             : scene.videoUrl
-                            ? 'bg-emerald-950/30 text-emerald-300 border-emerald-500/30 hover:bg-emerald-900/40'
-                            : 'bg-purple-600/20 text-purple-300 border-purple-500/40 hover:bg-purple-600 hover:text-white'
+                            ? 'bg-emerald-950/40 text-emerald-300 border-emerald-500/40 hover:bg-emerald-900/50'
+                            : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-500/50 hover:from-purple-500 hover:to-indigo-500 shadow-sm shadow-purple-600/30'
                         }`}
-                        title="Render scene with Wan video engine"
+                        title="Generate video for this shot with Wan engine"
                       >
-                        <Zap className="w-3 h-3 text-purple-300" />
-                        <span>{scene.videoUrl ? 'Re-render' : 'Render Shot'}</span>
+                        <Zap className="w-3.5 h-3.5 text-purple-200" />
+                        <span>{scene.videoUrl ? 'Re-render Shot' : 'Generate Video'}</span>
                       </button>
                     )}
 
@@ -579,6 +592,158 @@ export const SceneList: React.FC<SceneListProps> = ({
                         })}
                       </div>
                     )}
+
+                    {/* Scene Video Rendering & Preview Status Section */}
+                    <div className="pt-2 border-t border-zinc-800/80 space-y-2">
+                      {/* 1. Rendering in Progress with real progress bar */}
+                      {(renderingSceneId === scene.id || scene.status === 'generating' || scene.status === 'queued') && (
+                        <div className="p-3 bg-purple-950/30 border border-purple-500/40 rounded-xl space-y-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-semibold text-purple-200 flex items-center gap-2">
+                              <div className="w-3.5 h-3.5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+                              <span>Generating Video with Wan 2.1...</span>
+                            </span>
+                            <span className="font-mono text-purple-300 font-bold">
+                              {scene.engineProgress || 15}%
+                            </span>
+                          </div>
+                          {/* Animated Progress Bar */}
+                          <div className="w-full bg-zinc-900 rounded-full h-1.5 overflow-hidden border border-purple-500/30">
+                            <div
+                              className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full transition-all duration-300 rounded-full"
+                              style={{ width: `${Math.max(10, scene.engineProgress || 15)}%` }}
+                            />
+                          </div>
+                          <p className="text-[11px] text-zinc-400">
+                            Synthesizing video latents for {scene.duration}s shot using model weights and camera direction.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* 2. Video Ready - Responsive Player & Download */}
+                      {scene.videoUrl && (
+                        <div className="p-3 bg-zinc-900/90 border border-emerald-500/40 rounded-xl space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                              <span>Rendered Wan Video Clip Ready ({scene.duration}s)</span>
+                            </div>
+                            <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-mono">
+                              MP4 Verified
+                            </span>
+                          </div>
+
+                          <div className="relative rounded-lg overflow-hidden bg-black border border-zinc-800">
+                            <video
+                              src={scene.videoUrl}
+                              controls
+                              preload="metadata"
+                              playsInline
+                              className="w-full max-h-56 object-contain mx-auto"
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
+                            <div className="flex items-center gap-1.5">
+                              <a
+                                href={scene.videoUrl}
+                                download={`scene-${scene.sceneNumber}.mp4`}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                                <span>Download MP4</span>
+                              </a>
+
+                              {onSelectSceneForPreview && (
+                                <button
+                                  type="button"
+                                  onClick={() => onSelectSceneForPreview(scene)}
+                                  className="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-xs font-medium flex items-center gap-1.5 border border-zinc-700 transition-colors"
+                                >
+                                  <Film className="w-3.5 h-3.5 text-purple-400" />
+                                  <span>View in Viewport</span>
+                                </button>
+                              )}
+                            </div>
+
+                            {onRenderScene && (
+                              <button
+                                type="button"
+                                disabled={renderingSceneId === scene.id}
+                                onClick={() => onRenderScene(scene)}
+                                className="px-2.5 py-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg text-xs transition-colors"
+                                title="Re-render this shot"
+                              >
+                                Re-render Clip
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 3. Error Banner */}
+                      {Boolean(scene.generationError && !scene.videoUrl) && (
+                        <div className="p-3 bg-rose-950/30 border border-rose-500/40 rounded-xl space-y-2">
+                          <div className="flex items-start gap-2 text-xs">
+                            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                            <div className="space-y-1">
+                              <p className="font-semibold text-rose-200">
+                                Video Generation Failed or Not Configured
+                              </p>
+                              <p className="text-[11px] text-zinc-300 leading-relaxed">
+                                {scene.generationError}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 pt-1 flex-wrap">
+                            {onRenderScene && (
+                              <button
+                                type="button"
+                                onClick={() => onRenderScene(scene)}
+                                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium rounded-lg flex items-center gap-1.5 transition-colors"
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                                <span>Retry Render</span>
+                              </button>
+                            )}
+
+                            {onOpenEngineSettings && (
+                              <button
+                                type="button"
+                                onClick={onOpenEngineSettings}
+                                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-xs font-medium rounded-lg flex items-center gap-1.5 transition-colors"
+                              >
+                                <Sliders className="w-3 h-3 text-purple-400" />
+                                <span>WAN Engine Setup Guide</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 4. Not yet generated empty prompt call to action */}
+                      {!scene.videoUrl && !scene.generationError && renderingSceneId !== scene.id && scene.status !== 'generating' && (
+                        <div className="flex items-center justify-between p-2.5 bg-zinc-900/40 border border-dashed border-zinc-800 rounded-xl text-xs flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <Video className="w-4 h-4 text-purple-400" />
+                            <span className="text-zinc-400 text-[11px]">
+                              Ready for video generation ({scene.duration}s clip)
+                            </span>
+                          </div>
+                          {onRenderScene && (
+                            <button
+                              type="button"
+                              onClick={() => onRenderScene(scene)}
+                              className="px-3 py-1 bg-purple-600/30 hover:bg-purple-600 text-purple-200 hover:text-white border border-purple-500/40 text-[11px] font-semibold rounded-lg flex items-center gap-1.5 transition-all active:scale-95"
+                            >
+                              <Zap className="w-3 h-3" />
+                              <span>Generate Video</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

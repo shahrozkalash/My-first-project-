@@ -590,6 +590,10 @@ app.post('/api/video/engine/generate', async (req, res) => {
       guidanceScale,
       seed,
       characterConsistencyTags = [],
+      referenceImageUrl,
+      cameraMovement,
+      lighting,
+      style,
     } = req.body;
 
     if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
@@ -602,17 +606,41 @@ app.post('/api/video/engine/generate', async (req, res) => {
       prompt: prompt.trim(),
       negativePrompt,
       aspectRatio: aspectRatio === '9:16' ? '9:16' : '16:9',
-      duration: Math.max(1, Math.min(120, Number(duration) || 10)),
+      duration: Math.max(1, Math.min(120, Number(duration) || 5)),
       resolution,
       guidanceScale,
       seed,
       characterConsistencyTags,
+      referenceImageUrl,
+      cameraMovement,
+      lighting,
+      style,
     });
 
     const statusCode = result.success ? 200 : (result.error === 'ENGINE_NOT_CONFIGURED' ? 412 : 502);
     return res.status(statusCode).json(result);
   } catch (err: any) {
     res.status(500).json({ success: false, error: 'SERVER_ERROR', message: err.message });
+  }
+});
+
+// List all jobs in video engine registry
+app.get('/api/video/engine/jobs', (req, res) => {
+  try {
+    const jobs = wanVideoEngine.listJobs();
+    res.json({ jobs, count: jobs.length });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to list jobs' });
+  }
+});
+
+// Test connection probe endpoint
+app.post('/api/video/engine/test-connection', async (req, res) => {
+  try {
+    const health = await wanVideoEngine.checkHealth();
+    res.json(health);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Connection test failed' });
   }
 });
 

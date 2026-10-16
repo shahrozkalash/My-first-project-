@@ -97,6 +97,7 @@ export interface VideoEngineHealth {
   configured: boolean;
   reachable: boolean;
   engineType: 'wan';
+  provider?: string;
   engineUrlDisplay: string;
   model: string;
   supportedModels: string[];
