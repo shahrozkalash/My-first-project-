@@ -50,6 +50,7 @@ interface SceneListProps {
   onRenderAllScenes?: () => void;
   isRenderingAll?: boolean;
   onOpenEngineSettings?: () => void;
+  onOpenAudioStudio?: (sceneIndex: number) => void;
 }
 
 export const SceneList: React.FC<SceneListProps> = ({
@@ -72,6 +73,7 @@ export const SceneList: React.FC<SceneListProps> = ({
   onRenderAllScenes,
   isRenderingAll,
   onOpenEngineSettings,
+  onOpenAudioStudio,
 }) => {
   const [expandedScenes, setExpandedScenes] = useState<Record<string, boolean>>({});
 
@@ -592,6 +594,37 @@ export const SceneList: React.FC<SceneListProps> = ({
                         })}
                       </div>
                     )}
+
+                    {/* Audio & Lip-Sync Quick Status Strip */}
+                    <div className="pt-2.5 pb-1 border-t border-zinc-800/80 flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-300 font-medium">
+                          <MessageSquare className="w-3 h-3 text-purple-400" />
+                          <span>{(scene.dialogueLines || []).length} Spoken Cue{(scene.dialogueLines || []).length === 1 ? '' : 's'}</span>
+                        </span>
+
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-300 font-medium">
+                          <Zap className="w-3 h-3 text-blue-400" />
+                          <span>{(scene.soundEffects || []).length} SFX Event{(scene.soundEffects || []).length === 1 ? '' : 's'}</span>
+                        </span>
+
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-medium capitalize">
+                          <Sliders className="w-3 h-3 text-emerald-400" />
+                          <span>{scene.sceneMusicMood || 'Adventure'} Music</span>
+                        </span>
+                      </div>
+
+                      {onOpenAudioStudio && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenAudioStudio(index)}
+                          className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-purple-300 hover:text-white bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 rounded-lg transition-all active:scale-95"
+                        >
+                          <span>Open in Audio Studio</span>
+                          <span className="text-[10px]">→</span>
+                        </button>
+                      )}
+                    </div>
 
                     {/* Scene Video Rendering & Preview Status Section */}
                     <div className="pt-2 border-t border-zinc-800/80 space-y-2">

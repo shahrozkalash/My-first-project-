@@ -205,6 +205,45 @@ export function exportVeoBatchPrompts(project: Project) {
   downloadFile(lines.join('\n'), `${cleanTitle}-veo-batch-prompts.txt`, 'text/plain');
 }
 
+// Export Complete Dialogue, Voice Acting & Audio Timeline
+export function exportAudioScriptTimeline(project: Project) {
+  const lines: string[] = [];
+  lines.push(`# Complete Dialogue, Voice Acting & Audio Timeline`);
+  lines.push(`# Project: ${project.title}`);
+  lines.push(`# Total Runtime: ${project.totalDuration}s across ${project.scenes.length} scenes`);
+  lines.push('\n---\n');
+
+  project.scenes.forEach((s) => {
+    lines.push(`\n## Shot ${s.sceneNumber}: ${s.title} (${s.duration}s)`);
+    lines.push(`*Music Mood:* ${s.sceneMusicMood || 'Adventure'}`);
+
+    lines.push(`\n### Spoken Dialogue & Voice Acting:`);
+    if (s.dialogueLines && s.dialogueLines.length > 0) {
+      s.dialogueLines.forEach((d) => {
+        lines.push(
+          `- [${d.startTime}s - ${(d.startTime + d.duration).toFixed(1)}s] **${d.speakerName}** (${d.emotion || 'neutral'}): "${d.text}" (Voice: ${d.voiceId || 'narrator'}, Speed: ${d.speed || 1.0}x, Pitch: ${d.pitch || 1.0}x)`
+        );
+      });
+    } else {
+      lines.push(`- *(No spoken dialogue)*`);
+    }
+
+    lines.push(`\n### Sound Effects (SFX) Timeline:`);
+    if (s.soundEffects && s.soundEffects.length > 0) {
+      s.soundEffects.forEach((sfx) => {
+        lines.push(
+          `- [${sfx.startTime}s - ${(sfx.startTime + sfx.duration).toFixed(1)}s] **${sfx.name}** [${sfx.category}]: ${sfx.description} (Vol: ${Math.round((sfx.volume ?? 0.8) * 100)}%)`
+        );
+      });
+    } else {
+      lines.push(`- *(No sound effects)*`);
+    }
+  });
+
+  const cleanTitle = project.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  downloadFile(lines.join('\n'), `${cleanTitle}-audio-timeline.md`, 'text/markdown');
+}
+
 // Generate the exact Veo API Payload for copying or inspection
 export function generateVeoApiPayload(project: Project, scene?: Scene) {
   const targetScene = scene || project.scenes[0];

@@ -72,12 +72,14 @@ app.get('/api/source-code', (req, res) => {
       { path: 'src/data/constants.ts', category: 'Constants & Demos' },
       { path: 'src/utils/storage.ts', category: 'Storage & Exports' },
       { path: 'src/utils/duration.ts', category: 'Storage & Exports' },
+      { path: 'src/utils/audioEngine.ts', category: 'Audio & LipSync Engine' },
       { path: 'src/components/Navbar.tsx', category: 'UI Components' },
       { path: 'src/components/MobileBottomNav.tsx', category: 'UI Components' },
       { path: 'src/components/StoryPromptInput.tsx', category: 'UI Components' },
       { path: 'src/components/CharacterConsistencyManager.tsx', category: 'UI Components' },
       { path: 'src/components/SceneList.tsx', category: 'UI Components' },
       { path: 'src/components/VideoPreviewArea.tsx', category: 'UI Components' },
+      { path: 'src/components/AudioLipSyncStudio.tsx', category: 'UI Components' },
       { path: 'src/components/ProjectsLibrary.tsx', category: 'UI Components' },
       { path: 'src/components/ApiStatusModal.tsx', category: 'UI Components' },
       { path: 'src/components/ExportModal.tsx', category: 'UI Components' },
@@ -256,19 +258,29 @@ Generate the story title, logline, genre, character list (with consistent appear
               },
             ];
 
-        const mappedScenes = parsed.scenes.map((s: any, idx: number) => ({
-          id: `scene-${Date.now()}-${idx}`,
-          sceneNumber: idx + 1,
-          title: s.title || `Scene ${idx + 1}`,
-          visualPrompt: s.visualPrompt || s.actionSummary || prompt,
-          actionSummary: s.actionSummary || 'Key scene progression',
-          dialogue: s.dialogue || '',
-          cameraMovement: s.cameraMovement || 'Slow Cinematic Pan',
-          lighting: s.lighting || 'Cinematic dramatic lighting',
-          duration: distributedDurations[idx] || avgDuration,
-          characterIds: mappedCharacters.map((c: any) => c.name),
-          status: 'ready',
-        }));
+        const mappedScenes = parsed.scenes.map((s: any, idx: number) => {
+          const charName = (s.charactersPresent && s.charactersPresent[0]) || (mappedCharacters[0]?.name) || 'Narrator';
+          const dialogueLines = detectSceneDialogue(s.dialogue || '', s.actionSummary || '', charName, idx);
+          const soundEffects = detectSceneSoundEffects(s.actionSummary || '', prompt, idx);
+          const sceneMusicMood = detectSceneMusicMood(parsed.genre || '', s.actionSummary || '');
+
+          return {
+            id: `scene-${Date.now()}-${idx}`,
+            sceneNumber: idx + 1,
+            title: s.title || `Scene ${idx + 1}`,
+            visualPrompt: s.visualPrompt || s.actionSummary || prompt,
+            actionSummary: s.actionSummary || 'Key scene progression',
+            dialogue: s.dialogue || (dialogueLines[0]?.text || ''),
+            cameraMovement: s.cameraMovement || 'Slow Cinematic Pan',
+            lighting: s.lighting || 'Cinematic dramatic lighting',
+            duration: distributedDurations[idx] || avgDuration,
+            characterIds: mappedCharacters.map((c: any) => c.name),
+            status: 'ready',
+            dialogueLines,
+            soundEffects,
+            sceneMusicMood,
+          };
+        });
 
         return res.json({
           title: parsed.title || 'Untitled Story',
@@ -277,6 +289,24 @@ Generate the story title, logline, genre, character list (with consistent appear
           totalDuration: totalMovieDuration,
           characters: mappedCharacters,
           scenes: mappedScenes,
+          audioSettings: {
+            masterVolume: 1.0,
+            voiceVolume: 1.0,
+            sfxVolume: 0.8,
+            musicVolume: 0.35,
+            globalMusicMood: detectSceneMusicMood(parsed.genre || '', prompt),
+            autoDucking: true,
+            duckingPercent: 75,
+            language: 'en-US',
+            ttsEngine: 'browser_speech',
+          },
+          musicTrack: {
+            mood: detectSceneMusicMood(parsed.genre || '', prompt),
+            title: `${parsed.genre || 'Cinematic'} Theme`,
+            volume: 0.35,
+            duckingFactor: 0.25,
+            enabled: true,
+          },
           source: 'gemini-3.8-flash',
         });
       } catch (geminiError: any) {
@@ -294,8 +324,153 @@ Generate the story title, logline, genre, character list (with consistent appear
   }
 });
 
+// Audio and SFX heuristic analyzers
+export function detectSceneMusicMood(genre: string, text: string): 'suspense' | 'adventure' | 'fantasy' | 'sadness' | 'happiness' | 'calm' {
+  const combined = (genre + ' ' + text).toLowerCase();
+  if (combined.includes('noir') || combined.includes('cyber') || combined.includes('mystery') || combined.includes('thrill') || combined.includes('tension')) {
+    return 'suspense';
+  }
+  if (combined.includes('fantasy') || combined.includes('magic') || combined.includes('enchant') || combined.includes('mystic') || combined.includes('fairy')) {
+    return 'fantasy';
+  }
+  if (combined.includes('sad') || combined.includes('loss') || combined.includes('melancholy') || combined.includes('grief') || combined.includes('tears')) {
+    return 'sadness';
+  }
+  if (combined.includes('comedy') || combined.includes('joy') || combined.includes('happy') || combined.includes('cheer') || combined.includes('fun')) {
+    return 'happiness';
+  }
+  if (combined.includes('peace') || combined.includes('calm') || combined.includes('serene') || combined.includes('meditat') || combined.includes('nature')) {
+    return 'calm';
+  }
+  return 'adventure';
+}
+
+export function detectSceneSoundEffects(action: string, prompt: string, sceneIdx: number): any[] {
+  const combined = (action + ' ' + prompt).toLowerCase();
+  const sfxList: any[] = [];
+
+  if (combined.includes('walk') || combined.includes('step') || combined.includes('run') || combined.includes('stride') || combined.includes('journey')) {
+    sfxList.push({
+      id: `sfx-${Date.now()}-${sceneIdx}-1`,
+      name: 'Character Footsteps',
+      category: 'movement',
+      startTime: 0.3,
+      duration: 2.2,
+      volume: 0.75,
+      soundType: 'footsteps',
+      description: 'Synchronized movement across surface',
+    });
+  }
+  if (combined.includes('rain') || combined.includes('storm') || combined.includes('thunder') || combined.includes('weather') || combined.includes('sky')) {
+    sfxList.push({
+      id: `sfx-${Date.now()}-${sceneIdx}-2`,
+      name: 'Rain & Rolling Thunder',
+      category: 'nature',
+      startTime: 0.0,
+      duration: 3.5,
+      volume: 0.65,
+      soundType: 'rain_thunder',
+      description: 'Atmospheric storm ambience with distant thunder roll',
+    });
+  }
+  if (combined.includes('door') || combined.includes('portal') || combined.includes('gate') || combined.includes('enter') || combined.includes('threshold')) {
+    sfxList.push({
+      id: `sfx-${Date.now()}-${sceneIdx}-3`,
+      name: 'Threshold Creak & Close',
+      category: 'foley',
+      startTime: 0.8,
+      duration: 1.8,
+      volume: 0.8,
+      soundType: 'door',
+      description: 'Heavy door creak and latching closure',
+    });
+  }
+  if (combined.includes('cyber') || combined.includes('neon') || combined.includes('laser') || combined.includes('device') || combined.includes('energy') || combined.includes('robot')) {
+    sfxList.push({
+      id: `sfx-${Date.now()}-${sceneIdx}-4`,
+      name: 'Sci-Fi Energy Surge',
+      category: 'scifi_magic',
+      startTime: 1.2,
+      duration: 2.4,
+      volume: 0.8,
+      soundType: 'scifi_energy',
+      description: 'High-tech capacitor charge and frequency modulation',
+    });
+  }
+  if (combined.includes('magic') || combined.includes('crystal') || combined.includes('relic') || combined.includes('ancient') || combined.includes('glow')) {
+    sfxList.push({
+      id: `sfx-${Date.now()}-${sceneIdx}-5`,
+      name: 'Celestial Magical Chimes',
+      category: 'scifi_magic',
+      startTime: 0.6,
+      duration: 3.0,
+      volume: 0.7,
+      soundType: 'magical_chime',
+      description: 'Harmonic shimmer and mystery bells',
+    });
+  }
+  if (combined.includes('climax') || combined.includes('surge') || combined.includes('strike') || combined.includes('impact') || combined.includes('burst')) {
+    sfxList.push({
+      id: `sfx-${Date.now()}-${sceneIdx}-6`,
+      name: 'Cinematic Sub Impact',
+      category: 'impact',
+      startTime: 1.5,
+      duration: 2.0,
+      volume: 0.85,
+      soundType: 'impact_whoosh',
+      description: 'Dramatic whoosh into heavy kinetic sub-bass impact',
+    });
+  }
+
+  if (sfxList.length === 0) {
+    sfxList.push({
+      id: `sfx-${Date.now()}-${sceneIdx}-amb`,
+      name: 'Ambient Atmosphere & Wind',
+      category: 'ambience',
+      startTime: 0.0,
+      duration: 3.0,
+      volume: 0.5,
+      soundType: 'wind',
+      description: 'Subtle environmental room tone and breeze',
+    });
+  }
+
+  return sfxList;
+}
+
+export function detectSceneDialogue(dialogueText: string, actionSummary: string, characterName: string, sceneIdx: number): any[] {
+  const lineText = dialogueText && dialogueText.trim().length > 0
+    ? dialogueText.trim()
+    : (sceneIdx === 0
+      ? `The journey begins now. We cannot turn back.`
+      : sceneIdx === 1
+      ? `Look closely... the energy signature is shifting.`
+      : sceneIdx === 2
+      ? `Hold your ground! We are almost through!`
+      : `We made it. The horizon has never looked clearer.`);
+
+  const wordCount = Math.max(3, lineText.split(/\s+/).length);
+  const dur = Math.max(2.0, Math.min(6.5, Math.round(wordCount * 0.42 * 10) / 10));
+
+  return [
+    {
+      id: `diag-${Date.now()}-${sceneIdx}-1`,
+      speakerId: characterName ? `char-${characterName.toLowerCase().replace(/[^a-z0-9]/g, '')}` : 'narrator',
+      speakerName: characterName || 'Narrator',
+      text: lineText,
+      emotion: sceneIdx === 2 ? 'urgent' : (sceneIdx === 0 ? 'dramatic' : 'neutral'),
+      startTime: 0.5,
+      duration: dur,
+      status: 'ready',
+      voiceId: characterName === 'Lyra' ? 'hero_female' : (characterName ? 'hero_male' : 'narrator'),
+      speed: 1.0,
+      pitch: 1.0,
+    },
+  ];
+}
+
 // Helper for generating structured story when API key is unconfigured or offline
-function generateHeuristicStory(
+export function generateHeuristicStory(
   rawPrompt: string,
   style: string,
   sceneCount: number,
@@ -307,7 +482,7 @@ function generateHeuristicStory(
   const title = cleanPrompt.length > 36 ? cleanPrompt.slice(0, 32) + '...' : cleanPrompt;
 
   // Build or preserve consistent character
-  const characters = existingCharacters.length > 0 ? existingCharacters : [
+  const characters = (existingCharacters && existingCharacters.length > 0) ? existingCharacters : [
     {
       id: `char-${Date.now()}-0`,
       name: 'Kaelen Gray',
@@ -315,6 +490,10 @@ function generateHeuristicStory(
       visualDescription: 'Mid-30s explorer, chiseled features, cropped silver-streaked dark hair, intense grey eyes',
       attire: 'High-collar carbon fiber adventurer coat, utilitarian magnetic belts',
       keyProps: 'Antique compass with luminous blue needle',
+      voiceId: 'hero_male',
+      voiceGender: 'male',
+      voicePitch: 0.95,
+      voiceSpeed: 1.0,
     },
     {
       id: `char-${Date.now()}-1`,
@@ -323,6 +502,10 @@ function generateHeuristicStory(
       visualDescription: 'Athletic build, iridescent braided auburn hair, thoughtful expression',
       attire: 'Layered hooded dusk cloak with amber luminescence trim',
       keyProps: 'Brass-ringed optical telescope',
+      voiceId: 'hero_female',
+      voiceGender: 'female',
+      voicePitch: 1.15,
+      voiceSpeed: 1.0,
     }
   ];
 
@@ -414,8 +597,18 @@ function generateHeuristicStory(
     const sceneTitle = cycle > 0 ? `${tmpl.title} (Part ${cycle + 1})` : tmpl.title;
     const cameraMove = cameraMoves[idx % cameraMoves.length];
     const lightingSetup = lightings[idx % lightings.length];
+    const speakingChar = characters[idx % characters.length];
     const charDesc = characters[0] ? `Featuring ${characters[0].name} (${characters[0].visualDescription}, wearing ${characters[0].attire})` : '';
     const visualPrompt = `${styleTag}. Scene ${idx + 1} - ${sceneTitle}: ${cleanPrompt}. ${charDesc}. Action: ${tmpl.action}. Camera: ${cameraMove}. Lighting: ${lightingSetup}. Aspect Ratio ${aspectRatio}. 4K crisp render, temporal video consistency.`;
+
+    const dialogueLines = detectSceneDialogue(
+      idx === 1 ? 'Look... it is finally beginning.' : '',
+      tmpl.action,
+      speakingChar.name,
+      idx
+    );
+    const soundEffects = detectSceneSoundEffects(tmpl.action, cleanPrompt, idx);
+    const sceneMusicMood = detectSceneMusicMood('Cinematic Journey', tmpl.action);
 
     return {
       id: `scene-${Date.now()}-${idx}`,
@@ -423,14 +616,19 @@ function generateHeuristicStory(
       title: sceneTitle,
       visualPrompt,
       actionSummary: tmpl.action,
-      dialogue: idx === 1 ? 'Look... it is finally beginning.' : '',
+      dialogue: dialogueLines[0]?.text || '',
       cameraMovement: cameraMove,
       lighting: lightingSetup,
       duration: distributedDurations[idx] || Math.max(1, Math.round(totalMovieDuration / sceneCount)),
       characterIds: characters.map((c) => c.name),
       status: 'ready' as const,
+      dialogueLines,
+      soundEffects,
+      sceneMusicMood,
     };
   });
+
+  const globalMusicMood = detectSceneMusicMood('Cinematic Journey', cleanPrompt);
 
   return {
     title: title.charAt(0).toUpperCase() + title.slice(1),
@@ -439,6 +637,24 @@ function generateHeuristicStory(
     totalDuration: totalMovieDuration,
     characters,
     scenes: selectedScenes,
+    audioSettings: {
+      masterVolume: 1.0,
+      voiceVolume: 1.0,
+      sfxVolume: 0.8,
+      musicVolume: 0.35,
+      globalMusicMood,
+      autoDucking: true,
+      duckingPercent: 75,
+      language: 'en-US',
+      ttsEngine: 'browser_speech',
+    },
+    musicTrack: {
+      mood: globalMusicMood,
+      title: `${title} - Theme Suite`,
+      volume: 0.35,
+      duckingFactor: 0.25,
+      enabled: true,
+    },
     source: 'local-director-engine',
   };
 }
@@ -812,6 +1028,36 @@ app.post('/api/helper/job/cancel', async (req, res) => {
   }
 });
 
+// Proxy local audio TTS generation
+app.post('/api/helper/audio/tts/generate', async (req, res) => {
+  try {
+    const result = await wanVideoEngine.generateDialogueAudio(req.body);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to generate dialogue audio' });
+  }
+});
+
+// Proxy local lip-sync processing
+app.post('/api/helper/audio/lipsync/process', async (req, res) => {
+  try {
+    const result = await wanVideoEngine.processLipSync(req.body);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to process lip-sync' });
+  }
+});
+
+// Proxy local FFmpeg audio mixing & MP4 assembly
+app.post('/api/helper/audio/mix/assemble', async (req, res) => {
+  try {
+    const result = await wanVideoEngine.assembleFinalMp4(req.body);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to assemble MP4 with audio mix' });
+  }
+});
+
 // In production, serve built frontend; in dev, mount Vite middleware
 async function startServer() {
   const isProd = process.env.NODE_ENV === 'production';
@@ -836,7 +1082,9 @@ async function startServer() {
   });
 }
 
-startServer().catch((err) => {
-  console.error('Fatal server startup error:', err);
-  process.exit(1);
-});
+if (process.env.TEST_MODE !== '1') {
+  startServer().catch((err) => {
+    console.error('Fatal server startup error:', err);
+    process.exit(1);
+  });
+}

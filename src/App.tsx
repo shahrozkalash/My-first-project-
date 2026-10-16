@@ -9,6 +9,7 @@ import { ProjectsLibrary } from './components/ProjectsLibrary';
 import { ApiStatusModal } from './components/ApiStatusModal';
 import { ExportModal } from './components/ExportModal';
 import { LocalEnginePage } from './components/LocalEnginePage';
+import { AudioLipSyncStudio } from './components/AudioLipSyncStudio';
 import { localHelperClient } from './utils/localHelperClient';
 import {
   getStoredProjects,
@@ -40,7 +41,7 @@ import {
 export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveId] = useState<string>('');
-  const [currentTab, setCurrentTab] = useState<'studio' | 'projects' | 'local-engine' | 'api-info'>('studio');
+  const [currentTab, setCurrentTab] = useState<'studio' | 'audio-studio' | 'projects' | 'local-engine' | 'api-info'>('studio');
   const [mobileSection, setMobileSection] = useState<MobileStudioSection>('prompt');
 
   // Active project state
@@ -637,7 +638,19 @@ export default function App() {
           />
         )}
 
-        {/* VIEW 3: MAIN STORY STUDIO */}
+        {/* VIEW 3: AUDIO & LIP-SYNC STUDIO */}
+        {currentTab === 'audio-studio' && (
+          <AudioLipSyncStudio
+            project={currentProject}
+            onUpdateProject={updateProject}
+            currentSceneIndex={selectedSceneIndex}
+            onSelectSceneIndex={setSelectedSceneIndex}
+            onShowToast={showToast}
+            onNavigateToLocalEngine={() => setCurrentTab('local-engine')}
+          />
+        )}
+
+        {/* VIEW 4: MAIN STORY STUDIO */}
         {currentTab === 'studio' && (
           <div className="space-y-6">
             {/* Mobile Section Tabs for Android Screen Experience */}
@@ -751,6 +764,10 @@ export default function App() {
                     renderingSceneId={renderingSceneId}
                     onRenderAllScenes={handleRenderAllScenes}
                     isRenderingAll={isRenderingAll}
+                    onOpenAudioStudio={(sceneIdx) => {
+                      setSelectedSceneIndex(sceneIdx);
+                      setCurrentTab('audio-studio');
+                    }}
                   />
                 </div>
               </div>

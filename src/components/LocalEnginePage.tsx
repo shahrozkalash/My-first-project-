@@ -983,6 +983,91 @@ export const LocalEnginePage: React.FC<LocalEnginePageProps> = ({
               </div>
             )}
 
+            {/* Audio & Lip-Sync Models Section */}
+            <div className="pt-6 border-t border-zinc-800 space-y-4">
+              <div>
+                <h4 className="text-sm font-bold text-white font-display flex items-center gap-2">
+                  <span>Local Voice, Sound & Lip-Sync Models</span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                    100% Zero Cost
+                  </span>
+                </h4>
+                <p className="text-xs text-zinc-400">
+                  Lightweight open-source models for neural voice acting, phoneme lip-sync, and automated audio mixing.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                {/* Audio Model 1: Piper TTS */}
+                <div className="p-3.5 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white text-xs">Piper TTS (ONNX)</span>
+                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-500/10 text-blue-300">
+                      CPU Friendly
+                    </span>
+                  </div>
+                  <p className="text-zinc-400 text-[11px]">
+                    Ultra-fast neural speech synthesis. Natural voices running 100% on CPU with zero VRAM.
+                  </p>
+                  <div className="text-[10px] text-zinc-500 space-y-0.5 border-t border-zinc-800 pt-1.5">
+                    <div>Size: ~65 MB · VRAM: 0 GB</div>
+                    <div>Status: Built-in + Helper ready</div>
+                  </div>
+                </div>
+
+                {/* Audio Model 2: Kokoro-82M */}
+                <div className="p-3.5 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white text-xs">Kokoro-82M</span>
+                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-500/10 text-purple-300">
+                      Voice Actor
+                    </span>
+                  </div>
+                  <p className="text-zinc-400 text-[11px]">
+                    82M parameter natural voice model with human-grade breathing, pacing, and cadence.
+                  </p>
+                  <div className="text-[10px] text-zinc-500 space-y-0.5 border-t border-zinc-800 pt-1.5">
+                    <div>Size: ~310 MB · VRAM: 0.5 GB</div>
+                    <div>License: Apache 2.0</div>
+                  </div>
+                </div>
+
+                {/* Audio Model 3: Wav2Lip-HQ */}
+                <div className="p-3.5 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white text-xs">Wav2Lip-HQ</span>
+                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-pink-500/10 text-pink-300">
+                      Lip-Sync
+                    </span>
+                  </div>
+                  <p className="text-zinc-400 text-[11px]">
+                    Synchronizes mouth movements to exact speech audio waveforms for video shots.
+                  </p>
+                  <div className="text-[10px] text-zinc-500 space-y-0.5 border-t border-zinc-800 pt-1.5">
+                    <div>Size: ~435 MB · VRAM: 3.5 GB</div>
+                    <div>Hardware: GPU recommended</div>
+                  </div>
+                </div>
+
+                {/* Audio Model 4: FFmpeg Tool */}
+                <div className="p-3.5 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white text-xs">FFmpeg Tool</span>
+                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-300">
+                      Audio Muxer
+                    </span>
+                  </div>
+                  <p className="text-zinc-400 text-[11px]">
+                    Free command-line utility for multi-track audio mixing, ducking, and MP4 assembly.
+                  </p>
+                  <div className="text-[10px] text-zinc-500 space-y-0.5 border-t border-zinc-800 pt-1.5">
+                    <div>Status: {engineHealth?.audioEngine?.ffmpeg_available ? 'Available' : 'ImageIO Bundled'}</div>
+                    <div>Zero-cost local tool</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Engine Lifecycle Actions */}
             <div className="flex items-center justify-between gap-3 pt-4 border-t border-zinc-800 flex-wrap">
               <div className="flex items-center gap-2">

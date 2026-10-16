@@ -8,11 +8,12 @@ import {
   Cpu,
   CheckCircle2,
   Share2,
+  Volume2,
 } from 'lucide-react';
 
 interface NavbarProps {
-  currentTab: 'studio' | 'projects' | 'local-engine' | 'api-info';
-  setCurrentTab: (tab: 'studio' | 'projects' | 'local-engine' | 'api-info') => void;
+  currentTab: 'studio' | 'audio-studio' | 'projects' | 'local-engine' | 'api-info';
+  setCurrentTab: (tab: 'studio' | 'audio-studio' | 'projects' | 'local-engine' | 'api-info') => void;
   onNewProject: () => void;
   onOpenExportModal: () => void;
   projectCount: number;
@@ -71,6 +72,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Sparkles className="w-3.5 h-3.5" />
             Story Studio
+          </button>
+
+          <button
+            onClick={() => setCurrentTab('audio-studio')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all ${
+              currentTab === 'audio-studio'
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm shadow-purple-600/30'
+                : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+            }`}
+          >
+            <Volume2 className="w-3.5 h-3.5 text-purple-400" />
+            Audio & Lip-Sync
           </button>
 
           <button

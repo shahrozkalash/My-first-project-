@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { AspectRatio, Project, Scene, VideoEngineHealth, VideoEngineJobStatus } from '../types';
 import { localHelperClient } from '../utils/localHelperClient';
+import { storyMotionAudioEngine } from '../utils/audioEngine';
 import {
   downloadFile,
   exportVeoBatchPrompts,
@@ -177,11 +178,21 @@ export const VideoPreviewArea: React.FC<VideoPreviewAreaProps> = ({
     if (currentTime >= totalDuration) {
       setCurrentTime(0);
     }
-    setIsPlaying(!isPlaying);
+    const nextPlaying = !isPlaying;
+    setIsPlaying(nextPlaying);
+    if (nextPlaying) {
+      const mood = activeScene?.sceneMusicMood || project.audioSettings?.globalMusicMood || 'adventure';
+      if (mood !== 'none') {
+        storyMotionAudioEngine.playMusicLoop(mood, activeScene?.dialogueLines || [], 0.35);
+      }
+    } else {
+      storyMotionAudioEngine.stopAll();
+    }
   };
 
   const handleReset = () => {
     setIsPlaying(false);
+    storyMotionAudioEngine.stopAll();
     setCurrentTime(0);
     onSelectSceneIndex(0);
   };

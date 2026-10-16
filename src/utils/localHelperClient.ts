@@ -249,6 +249,50 @@ export class LocalHelperClient {
       method: 'POST',
     });
   }
+
+  // Audio & Lip-Sync Helper APIs
+  public async generateDialogueAudio(
+    text: string,
+    voice: string = 'narrator',
+    speed: number = 1.0,
+    pitch: number = 1.0,
+    emotion: string = 'neutral'
+  ): Promise<any> {
+    return this.request('/api/audio/tts/generate', {
+      method: 'POST',
+      body: JSON.stringify({ text, voice, speed, pitch, emotion }),
+    });
+  }
+
+  public async processLipSync(payload: {
+    videoFilename: string;
+    audioFilename: string;
+    characterId?: string;
+    characterName?: string;
+    model?: string;
+  }): Promise<any> {
+    return this.request('/api/audio/lipsync/process', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async assembleFinalMp4(payload: {
+    videoFilename: string;
+    dialogueFilename?: string;
+    sfxFilename?: string;
+    bgmFilename?: string;
+    voiceVolume?: number;
+    sfxVolume?: number;
+    bgmVolume?: number;
+    enableDucking?: boolean;
+  }): Promise<any> {
+    return this.request('/api/audio/mix/assemble', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
 }
 
 export const localHelperClient = new LocalHelperClient();
+

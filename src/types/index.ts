@@ -27,6 +27,11 @@ export interface Character {
   keyProps: string;
   voiceTone?: string;
   avatarBg?: string;
+  voiceId?: string;
+  voiceGender?: 'male' | 'female' | 'neutral';
+  voicePitch?: number; // 0.6 - 1.4, default 1.0
+  voiceSpeed?: number; // 0.7 - 1.4, default 1.0
+  voiceEmotion?: string;
 }
 
 export type CameraMovement =
@@ -51,6 +56,59 @@ export type LightingMood =
   | 'Warm Fireplace Hearth'
   | 'Dramatic Chiaroscuro';
 
+export interface DialogueLine {
+  id: string;
+  speakerId: string; // 'narrator' or character.id / character.name
+  speakerName: string;
+  text: string;
+  emotion?: 'neutral' | 'dramatic' | 'whisper' | 'urgent' | 'joyful' | 'somber' | 'fearful';
+  startTime: number; // in seconds from scene start
+  duration: number; // in seconds
+  audioUrl?: string; // audio blob/data URL or local file path
+  status?: 'pending' | 'ready' | 'generating' | 'error';
+  voiceId?: string;
+  speed?: number;
+  pitch?: number;
+}
+
+export type SoundEffectCategory = 'foley' | 'ambience' | 'impact' | 'nature' | 'movement' | 'scifi_magic';
+
+export interface SoundEffectEvent {
+  id: string;
+  name: string;
+  category: SoundEffectCategory;
+  startTime: number; // in seconds from scene start
+  duration: number;
+  volume: number; // 0 to 1
+  soundType: string; // e.g. 'footsteps', 'rain_thunder', 'wind', 'door', 'impact_whoosh', 'scifi_energy', 'magical_chime'
+  audioUrl?: string;
+  description: string;
+}
+
+export type MusicMood = 'suspense' | 'sadness' | 'happiness' | 'adventure' | 'fantasy' | 'calm' | 'none';
+
+export interface MusicTrackConfig {
+  mood: MusicMood;
+  title: string;
+  volume: number; // 0 to 1, default 0.35
+  duckingFactor: number; // e.g. 0.25 (lower to 25% during dialogue)
+  enabled: boolean;
+  audioUrl?: string;
+  customUploaded?: boolean;
+}
+
+export interface LipSyncStatus {
+  status: 'idle' | 'queued' | 'processing' | 'completed' | 'unsupported' | 'failed';
+  model: 'wav2lip' | 'sadtalker' | 'liveportrait' | 'browser_assisted';
+  targetCharacterId?: string;
+  targetCharacterName?: string;
+  outputVideoUrl?: string;
+  error?: string;
+  honestNotes?: string;
+  hardwareRequirement?: string;
+  testedStatus?: 'tested_working' | 'ready_for_weights' | 'unsupported_gpu';
+}
+
 export interface Scene {
   id: string;
   sceneNumber: number;
@@ -68,6 +126,26 @@ export interface Scene {
   operationName?: string;
   engineJobId?: string;
   engineProgress?: number;
+
+  // Audio & Lip-Sync extensions
+  dialogueLines?: DialogueLine[];
+  soundEffects?: SoundEffectEvent[];
+  sceneMusicMood?: MusicMood;
+  lipSync?: LipSyncStatus;
+  mixedVideoUrl?: string;
+  mixedAudioUrl?: string;
+}
+
+export interface AudioSettings {
+  masterVolume: number;
+  voiceVolume: number;
+  sfxVolume: number;
+  musicVolume: number;
+  globalMusicMood: MusicMood;
+  autoDucking: boolean;
+  duckingPercent: number; // e.g. 75 means attenuate by 75%
+  language: string;
+  ttsEngine: 'browser_speech' | 'local_piper' | 'local_kokoro';
 }
 
 export interface Project {
@@ -86,11 +164,25 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   isFavorite?: boolean;
+  audioSettings?: AudioSettings;
+  musicTrack?: MusicTrackConfig;
 }
 
 export interface GenerationStep {
   label: string;
   status: 'pending' | 'processing' | 'done';
+}
+
+export interface AudioModelMeta {
+  name: string;
+  category: 'tts' | 'lipsync' | 'mixing' | 'asset';
+  downloaded: boolean;
+  min_vram_gb: number;
+  download_size_mb: number;
+  cpu_supported: boolean;
+  tested_status: 'tested_working' | 'ready_for_download' | 'experimental' | 'untested';
+  description: string;
+  license: string;
 }
 
 export interface VideoEngineHealth {
@@ -129,6 +221,16 @@ export interface VideoEngineHealth {
     total_bytes: number;
     status: string;
     error?: string;
+  };
+  audioEngine?: {
+    ffmpeg_available: boolean;
+    piper_available: boolean;
+    kokoro_available: boolean;
+    wav2lip_available: boolean;
+    sadtalker_available: boolean;
+    active_task?: string | null;
+    vram_stage_policy: 'separate_stages_recommended' | 'sufficient_vram';
+    models: Record<string, AudioModelMeta>;
   };
   supportedModels: string[];
   supportedResolutions: string[];

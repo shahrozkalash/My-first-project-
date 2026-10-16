@@ -23,6 +23,7 @@ import {
   exportProjectJSON,
   exportStoryboardScript,
   exportVeoBatchPrompts,
+  exportAudioScriptTimeline,
   downloadFile,
 } from '../utils/storage';
 import { formatDuration } from '../utils/duration';
@@ -243,6 +244,28 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 >
                   <Download className="w-3.5 h-3.5 text-blue-400" />
                   <span>Download Markdown (.md)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 2.5 Audio Timeline & Voice Acting Script */}
+            <div className="p-3.5 bg-zinc-900/80 border border-purple-500/30 rounded-xl space-y-2 hover:border-purple-500/60 transition-colors">
+              <div className="flex items-center gap-2">
+                <FileCode className="w-4 h-4 text-purple-400" />
+                <span className="font-semibold text-white">
+                  Audio & Voice Acting Timeline (.md)
+                </span>
+              </div>
+              <p className="text-zinc-400 text-[11px]">
+                Detailed sound-design cues, character voice profiles, timestamps, phoneme timing notes, and story-aware sound effect events.
+              </p>
+              <div className="pt-1">
+                <button
+                  onClick={() => exportAudioScriptTimeline(project)}
+                  className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-medium rounded-lg flex items-center gap-1.5 shadow-sm shadow-purple-600/30"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download Audio Timeline (.md)</span>
                 </button>
               </div>
             </div>

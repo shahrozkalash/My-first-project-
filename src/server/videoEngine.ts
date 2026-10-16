@@ -83,6 +83,7 @@ export interface VideoEngineHealth {
     status: string;
     error?: string;
   };
+  audioEngine?: any;
   supportedModels: string[];
   supportedResolutions: string[];
   supportedAspectRatios: string[];
@@ -200,6 +201,7 @@ export class WanVideoEngine {
           hardware: gpuInfo,
           models: data.models,
           downloadState: data.download_state,
+          audioEngine: data.audioEngine,
           supportedModels,
           supportedResolutions,
           supportedAspectRatios,
@@ -496,6 +498,45 @@ export class WanVideoEngine {
     } catch (e) {
       return { status: 'error', message: 'Could not contact helper to cancel job.' };
     }
+  }
+
+  /**
+   * Generates dialogue audio via Windows Helper TTS
+   */
+  public async generateDialogueAudio(payload: any): Promise<any> {
+    const endpoint = `${this.config.engineUrl.replace(/\/+$/, '')}/api/audio/tts/generate`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return res.json();
+  }
+
+  /**
+   * Runs local lip synchronization via Windows Helper
+   */
+  public async processLipSync(payload: any): Promise<any> {
+    const endpoint = `${this.config.engineUrl.replace(/\/+$/, '')}/api/audio/lipsync/process`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return res.json();
+  }
+
+  /**
+   * Assembles final MP4 with multi-track audio mix via Windows Helper FFmpeg
+   */
+  public async assembleFinalMp4(payload: any): Promise<any> {
+    const endpoint = `${this.config.engineUrl.replace(/\/+$/, '')}/api/audio/mix/assemble`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return res.json();
   }
 
   /**

@@ -6,13 +6,14 @@ import {
   PlaySquare,
   FolderOpen,
   Cpu,
+  Volume2,
 } from 'lucide-react';
 
 export type MobileStudioSection = 'prompt' | 'characters' | 'scenes' | 'preview';
 
 interface MobileBottomNavProps {
-  currentTab: 'studio' | 'projects' | 'local-engine' | 'api-info';
-  setCurrentTab: (tab: 'studio' | 'projects' | 'local-engine' | 'api-info') => void;
+  currentTab: 'studio' | 'audio-studio' | 'projects' | 'local-engine' | 'api-info';
+  setCurrentTab: (tab: 'studio' | 'audio-studio' | 'projects' | 'local-engine' | 'api-info') => void;
   studioSection: MobileStudioSection;
   setStudioSection: (sec: MobileStudioSection) => void;
   sceneCount: number;
@@ -27,7 +28,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   sceneCount,
   characterCount,
 }) => {
-  const handleNav = (tab: 'studio' | 'projects' | 'local-engine' | 'api-info', section?: MobileStudioSection) => {
+  const handleNav = (tab: 'studio' | 'audio-studio' | 'projects' | 'local-engine' | 'api-info', section?: MobileStudioSection) => {
     setCurrentTab(tab);
     if (section) {
       setStudioSection(section);
@@ -98,7 +99,20 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <span className="text-[10px]">Preview</span>
       </button>
 
-      {/* 5. Projects Library */}
+      {/* 5. Audio & Lip-Sync Studio */}
+      <button
+        onClick={() => handleNav('audio-studio')}
+        className={`flex flex-col items-center justify-center min-h-[48px] py-1 px-2 rounded-lg transition-all active:scale-95 ${
+          currentTab === 'audio-studio'
+            ? 'text-purple-400 font-semibold'
+            : 'text-zinc-400 hover:text-zinc-200'
+        }`}
+      >
+        <Volume2 className="w-4 h-4 mb-0.5 text-purple-400" />
+        <span className="text-[10px]">Audio</span>
+      </button>
+
+      {/* 6. Projects Library */}
       <button
         onClick={() => handleNav('projects')}
         className={`flex flex-col items-center justify-center min-h-[48px] py-1 px-2 rounded-lg transition-all active:scale-95 ${
