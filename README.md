@@ -1,134 +1,156 @@
-# StoryMotion AI — Zero-Cost Local WAN 2.1 Video Generation Studio
+# StoryMotion AI — Zero-Cost Local WAN 2.1 Video Generation & Story Studio
 
-**StoryMotion AI** is a complete, local-first, zero-cost AI video generation and storyboard-planning studio with character consistency, sequential scene direction, and a local WAN 2.1 inference pipeline.
+**StoryMotion AI** is a local-first, zero-cost AI video generation and storyboard-planning studio with strict character consistency, sequential scene direction, a dedicated Fight Scene Planner, user-selectable video quality (480p, 720p HD, 1080p Full HD), and a local NVIDIA GPU inference pipeline.
 
-> **Zero-Cost Policy**: 100% free of paid APIs, cloud GPU subscriptions, credit cards, or hidden fees. All video rendering executes directly on your own NVIDIA GPU using open-source WAN 2.1 weights.
+> **Zero-Cost & Local-First Guarantee**: 100% free of paid APIs, cloud GPU subscriptions, credit cards, or hidden fees. All video rendering executes directly on your own NVIDIA GPU using open-source WAN 2.1 weights and the local Windows helper.
 
 ---
 
-## Architecture Overview
+## Architecture & Hosting Model
 
 ```
-┌──────────────────────────────────────────────┐
-│  Client Web App (React 19 + Vite + Tailwind)  │
-│  • Story planning & character consistency    │
-│  • Responsive for Android phone & Windows PC │
-│  • Local Engine pairing & diagnostics        │
-│  • Sequential scene queue & video player     │
-└──────────────┬───────────────────────────────┘
-               │
-               │ (Direct Browser-to-Loopback via PNA / CORS)
-               ▼
-┌──────────────────────────────────────────────┐
-│  Windows Local Helper (FastAPI + PyTorch)   │
-│  • Runs on Windows 11 laptop (127.0.0.1:8000)│
-│  • Loopback binding & token pairing          │
-│  • Hardware & VRAM detection                 │
-│  • Official Hugging Face WAN 2.1 models      │
-│  • GPU Diffusers pipeline with CPU offload   │
-└──────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────┐
+│                      FRONTEND WEB APPLICATION                     │
+│  Hosted on GitHub Pages: https://<username>.github.io/storymontionai/ │
+│                                                                   │
+│  • Story planning & sequential scene direction                    │
+│  • Fight Scene Planner (DeepSeek-R1 / NVIDIA Nemotron models)     │
+│  • Cinematic transition studio (Hard Cut, Dissolve, Wipe, etc.)   │
+│  • Multi-track audio mixer (dialogue, SFX, background music)      │
+│  • Quality Selector: 480p, 720p (Native WAN), 1080p (Upscaled)    │
+│  • Client-side offline fallback engine & project storage          │
+└─────────────────────────────────┬─────────────────────────────────┘
+                                  │
+                                  │ (Private Network Access / Loopback)
+                                  ▼
+┌───────────────────────────────────────────────────────────────────┐
+│             LOCAL WINDOWS HELPER (On Your Windows PC)             │
+│  Runs locally at http://127.0.0.1:8000 with NVIDIA CUDA GPU       │
+│                                                                   │
+│  • 100% Zero-cost local execution on your own hardware            │
+│  • Real WAN 2.1 Diffusers pipeline with CPU offload               │
+│  • High-fidelity Lanczos 1080p upscaler via local FFmpeg          │
+│  • Local LLM inference (DeepSeek-R1-Distill-Qwen-1.5B / Nemotron) │
+│  • Multi-track FFmpeg MP4 audio and video movie assembly          │
+│  • Automatic ffprobe dimension and playback verification          │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
----
+### GitHub Pages vs. Local Helper Responsibilities
 
-## Repository File Inventory (Files That Actually Exist)
-
-| Path | Purpose |
-|---|---|
-| `/windows-helper/install.bat` | Automated Windows installer (creates venv, installs CUDA PyTorch & Diffusers) |
-| `/windows-helper/start.bat` | One-click service launcher binding to `127.0.0.1:8000` |
-| `/windows-helper/stop.bat` | One-click service stopper (releases port 8000 and VRAM) |
-| `/windows-helper/uninstall.bat` | Clean uninstaller that removes venv and caches safely |
-| `/windows-helper/helper_server.py` | FastAPI server for loopback communication, token auth, model downloads, and video generation |
-| `/windows-helper/requirements.txt` | Python dependencies (FastAPI, Uvicorn, PyTorch, Diffusers, Accelerate, HuggingFace Hub) |
-| `/windows-helper/README.md` | Dedicated Windows helper reference manual |
-| `/src/components/LocalEnginePage.tsx` | Full Web UI: Check PC, Download Installer, Model Manager, Test WAN, Queue Controls, Live Logs |
-| `/src/utils/localHelperClient.ts` | Direct browser-to-loopback client with pairing token, PNA support, and proxy fallback |
-| `/src/server/videoEngine.ts` | Server-side video engine controller and helper proxy |
-| `/scripts/local_wan_server.py` | Standalone Python WAN server alternative |
-| `/scripts/run_local_wan.bat` | Standalone Windows batch launcher |
-| `/scripts/run_local_wan.sh` | Standalone Linux/macOS launcher |
-| `/server.ts` | Express backend with `/api/download/windows-helper` dynamic zip bundling |
-| `/src/App.tsx` | Main studio controller with mobile responsive tabs and queue execution |
-| `/src/components/` | Navbar, MobileBottomNav, SceneList, CharacterConsistencyManager, VideoPreviewArea, ProjectsLibrary |
-
----
-
-## Windows 11 Setup & Testing Guide (For Your Brother)
-
-Follow these exact steps on your Windows 11 laptop equipped with an NVIDIA GPU (e.g. RTX 3060, RTX 4060, or higher):
-
-### Step 1: Install Free Python 3.10 or 3.11
-1. Download Python from the official site: [python.org/downloads](https://www.python.org/downloads/)
-2. Run the installer. **CRITICAL:** Check the box at the bottom: **`☑ Add python.exe to PATH`** before clicking "Install Now".
-
-### Step 2: Obtain the Windows Helper
-Either:
-- Click **"Download Windows Helper (.zip)"** directly from the **Local Engine** tab in StoryMotion AI.
-- Or download/clone the `windows-helper/` folder from this GitHub repository.
-
-### Step 3: Run `install.bat`
-1. Open the `windows-helper` folder.
-2. Double-click `install.bat`.
-3. The script will:
-   - Check your Python version.
-   - Detect your NVIDIA GPU name and total VRAM via `nvidia-smi`.
-   - Create an isolated virtual environment (`venv\`).
-   - Install PyTorch with NVIDIA CUDA 12.4 acceleration.
-   - Install Diffusers, Hugging Face Hub, FastAPI, and Uvicorn.
-   - Generate a local pairing token in `.pairing_token`.
-4. Press any key when installation finishes.
-
-### Step 4: Run `start.bat`
-1. Double-click `start.bat`.
-2. A command prompt window will open showing:
-   ```
-   ======================================================================
-     StoryMotion AI - Local Windows WAN 2.1 Helper
-   ======================================================================
-     Loopback URL:  http://127.0.0.1:8000
-     Device Name:   NVIDIA GeForce RTX ...
-     Total VRAM:    ... GB (Free: ... GB)
-     Pairing Token: [16-character token displayed here]
-   ======================================================================
-   ```
-3. Keep this window open while using StoryMotion AI.
-
-### Step 5: Connect and Generate Real Videos
-1. In the web app, navigate to the **Local Engine** tab.
-2. Click **"Check Engine Status"** (or paste your pairing token if prompted).
-3. Under **Download Compatible Model**, select **Wan2.1-T2V-1.4B (Recommended)** and click **Download Model Weights**.
-   - Download is ~3.6 GB directly from official Hugging Face repository `Wan-AI/Wan2.1-T2V-1.4B-Diffusers`.
-4. Click **"Start Engine"** to load the model into your GPU with automatic CPU offload.
-5. Click **"Test WAN Engine (1s)"** to verify that your GPU produces an actual MP4 video clip.
-6. Once verified, return to **Studio** and click **"Render Shot"** on any scene!
-
----
-
-## Release & Deployment Checklist
-
-### Website Deployment
-- [x] Responsive layout tested for Android smartphones and Windows desktop displays.
-- [x] Storyboard writer, scene duration controls, character consistency manager, and project save/load fully functional offline.
-- [x] `compile_applet` build succeeded (`npm run build`).
-- [x] `lint_applet` passed (`tsc --noEmit`) with zero errors.
-- [x] Dynamic helper packaging enabled (`GET /api/download/windows-helper` produces `storymotion-windows-helper.zip`).
-- [x] Private Network Access (PNA) and CORS headers configured on helper for deployed web origin pairing.
-
-### Windows Testing Status (Honest Verification State)
-
-| Component | Status | Details |
+| Component | GitHub Pages (`storymontionai`) | Local Windows Helper (`127.0.0.1:8000`) |
 |---|---|---|
-| **Website & UI** | ✅ Fully Implemented & Tested | Responsive design, tabs, project storage, scene editor, prompt generator. |
-| **Local Engine Web Page** | ✅ Fully Implemented & Tested | Hardware diagnostics, model manager, pairing form, queue progress, log viewer. |
-| **Windows Helper Code** | ✅ Fully Implemented (Untested on Windows) | Written in Python/FastAPI. Requires Windows machine with Python to test execution. |
-| **Batch Scripts (`install.bat`, `start.bat`)** | ✅ Fully Implemented (Untested on Windows) | Written for Windows cmd/batch. Requires testing on Windows 11. |
-| **Model Weight Inference** | ⏳ Awaiting Hardware Run | Depends on physical NVIDIA GPU and downloaded weights from Hugging Face. |
+| **Hosting Type** | Static Web Hosting (HTML/CSS/JS) | Native Windows Python Service (`FastAPI` + `PyTorch`) |
+| **Capabilities** | Story planning, UI, timeline, scene editing, audio cue design, project import/export, client choreography | Real GPU video diffusion (WAN 2.1), model downloads, FFmpeg video assembly & upscaling, local neural inference |
+| **Limitations** | **Cannot run Python servers, execute GPU diffusion, or store gigabyte model weights** | Requires physical Windows PC with NVIDIA GPU |
+| **Privacy** | Zero private credentials or keys committed to GitHub | All videos, audio files, and model checkpoints remain 100% private on local disk |
 
 ---
 
-## Security & Local Communication Standards
-- **Loopback Binding**: The helper binds strictly to `127.0.0.1:8000`. It is never exposed to the public internet.
-- **Pairing Token**: Protected by a 16-byte cryptographic secret stored in `.pairing_token`.
-- **No Arbitrary Commands**: The helper exposes explicit, parameter-validated endpoints (`/api/models/download`, `/api/engine/start`, `/api/video/generate`). It does not accept or execute arbitrary shell commands.
-- **Zero Paid APIs**: Absolutely no OpenAI, Runway, Luma, Replicate, or other billing APIs are configured or required.
+## Key Features
+
+### 1. Fight Scene Planner (Zero-Cost Local AI)
+- **Cinematic Choreography**: Plans multi-shot, non-graphic combat sequences (Martial Arts, Cyberpunk Augmented, Swashbuckling, Medieval Duels, etc.).
+- **Local Model Support**: Designed for free, open-weight models:
+  - `DeepSeek-R1-Distill-Qwen-1.5B` (MIT License, ~2GB VRAM or CPU friendly)
+  - `NVIDIA Nemotron-Nano-4B-Instruct` (NVIDIA Open Model License / Apache 2.0, ~3.5GB VRAM)
+- **Continuity Anchors**: Automatically inserts character names, physical descriptions, attire, weaponry, and environment landmarks into every shot's visual prompt to ensure WAN diffusion consistency across angles.
+- **Direct Pipeline Handoff**: Converts fight choreography beats directly into sequential storyboard scenes with sound effects, dialogue cues, and camera directions ready for WAN video generation.
+- **Honest Status Reporting**: Never fakes local neural execution. If local weights are not installed on disk, the UI provides clear instructions and downloads without breaking the storyboard workflow.
+
+### 2. User-Selectable Video Quality & Resolution
+- **User-Controlled Output Options**:
+  - **480p (854 × 480 landscape / 480 × 854 portrait)**: Lower resource requirement (~6GB VRAM), rapid iteration.
+  - **720p HD (1280 × 720 landscape / 720 × 1280 portrait)**: **Default**. Native WAN 2.1 diffusion resolution, sharp details (~8GB-12GB VRAM).
+  - **1080p Full HD (1920 × 1080 landscape / 1080 × 1920 portrait)**: Native 720p diffusion + high-fidelity local Lanczos upscaling with unsharp filter via FFmpeg.
+- **Honest Differentiation**: Clearly labels native generation vs. upscaled output in the UI.
+- **Actual Dimension Verification**: The local helper inspects assembled MP4 files with `ffprobe` to verify real output dimensions (`1920x1080`, `1280x720`, `854x480`) before confirming completion.
+
+### 3. Cinematic Transitions
+- Full support for transitions between scenes: **Hard Cut (0s)**, **Cross Dissolve (0.2s–3.0s)**, **Fade to Black (0.3s–3.0s)**, **Fade to White (0.2s–2.0s)**, **Wipe Left**, **Wipe Right**, **Whip Pan**, and **Zoom / Push**.
+- Visual connector badges between scene cards and one-click "Apply to All Shots" action.
+
+### 4. Audio & Lip-Sync Studio
+- Multi-track timeline for spoken dialogue, voice profiles, sound effects (SFX), and adaptive background music moods.
+- In-browser Web Audio preview and local FFmpeg master mixdown.
+
+---
+
+## Local Development & Setup
+
+### Prerequisites
+- Node.js 18+ or 20+
+- npm (or bun)
+
+### 1. Clone & Install
+```bash
+git clone https://github.com/<your-username>/storymontionai.git
+cd storymontionai
+npm install
+```
+
+### 2. Run Local Development Server
+```bash
+npm run dev
+```
+The dev server starts on `http://localhost:3000` (or `http://localhost:8080`).
+
+### 3. Run Automated Tests
+```bash
+npm test
+```
+Runs both the Fight Scene Planner test suite (70 tests) and the Audio Pipeline verification test suite.
+
+### 4. Build for Production
+```bash
+# Standard build (relative base)
+npm run build
+
+# Build specifically for GitHub Pages under /storymontionai/
+npm run build:gh-pages
+```
+Output files are written cleanly to `./dist`.
+
+---
+
+## GitHub Pages Deployment
+
+The repository is configured for automated deployment to GitHub Pages via GitHub Actions.
+
+### Deployment Steps:
+1. Push this repository to GitHub under the name **`storymontionai`**.
+2. On GitHub, navigate to:
+   - **Repository Settings** ➔ **Pages**
+   - Under **Build and deployment**:
+     - **Source**: Select **GitHub Actions**
+3. The included workflow `.github/workflows/deploy.yml` will automatically:
+   - Install dependencies with lockfile verification.
+   - Run linter and verification test suites.
+   - Build the static frontend with `--base=/storymontionai/`.
+   - Publish the artifact to GitHub Pages.
+4. Your site will be live at:
+   ```
+   https://<your-username>.github.io/storymontionai/
+   ```
+
+---
+
+## Windows Helper Guide (Local GPU Inference)
+
+To generate actual videos using your own NVIDIA GPU with zero cloud costs:
+
+1. Open the `windows-helper/` directory on your Windows 11 PC.
+2. Double-click **`install.bat`** (creates `venv`, installs PyTorch with CUDA 12.4 and Diffusers).
+3. Double-click **`start.bat`** to start the local helper service on `http://127.0.0.1:8000`.
+4. In the StoryMotion AI web app, navigate to the **Local Engine** tab:
+   - Click **Check Engine Status**.
+   - Download the free open-source `Wan2.1-T2V-1.4B` model weights (~3.6 GB).
+   - Click **Start Engine** and test video generation.
+5. All shots rendered in the web app are processed directly on your GPU and saved locally.
+
+---
+
+## Repository Hygiene & Security
+- **No Private Keys in Frontend**: Client code never requires or stores cloud API keys.
+- **Weights Excluded from Git**: `.gitignore` strictly ignores `.safetensors`, `.pt`, `.onnx`, `.bin`, `.gguf`, and `.mp4` video outputs.
+- **Loopback-Only Binding**: The helper server binds strictly to `127.0.0.1:8000` with CORS restricted to local origins and deployed project URLs.

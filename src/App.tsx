@@ -23,6 +23,7 @@ import {
   createNewProjectTemplate,
 } from './utils/storage';
 import { AspectRatio, Character, Project, Scene, VisualStyle, VideoResolution } from './types';
+import { generateClientHeuristicStory, enhanceClientPrompt } from './utils/storyEngine';
 import { getResolutionDimensions } from './data/constants';
 import {
   DEFAULT_TOTAL_DURATION,
@@ -183,29 +184,44 @@ export default function App() {
         setGenerationStepMessage('Synthesizing consistent character prompts across shots...');
       }, 1400);
 
-      const res = await fetch('/api/story/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: currentProject.prompt,
-          style: currentProject.style,
-          numScenes: currentProject.numScenes,
-          totalDuration: currentProject.totalDuration || DEFAULT_TOTAL_DURATION,
-          duration: Math.round((currentProject.totalDuration || DEFAULT_TOTAL_DURATION) / currentProject.numScenes),
-          characters: currentProject.characters,
-          aspectRatio: currentProject.aspectRatio,
-        }),
-      });
+      let data: any = null;
+      try {
+        const res = await fetch('/api/story/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: currentProject.prompt,
+            style: currentProject.style,
+            numScenes: currentProject.numScenes,
+            totalDuration: currentProject.totalDuration || DEFAULT_TOTAL_DURATION,
+            duration: Math.round((currentProject.totalDuration || DEFAULT_TOTAL_DURATION) / currentProject.numScenes),
+            characters: currentProject.characters,
+            aspectRatio: currentProject.aspectRatio,
+          }),
+        });
+
+        if (res.ok) {
+          data = await res.json();
+        }
+      } catch {
+        // API offline or static GitHub Pages hosting
+      }
 
       clearTimeout(timer1);
       clearTimeout(timer2);
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to generate story');
+      // Resilient fallback to zero-cost client-side story director
+      if (!data || !data.scenes || data.scenes.length === 0) {
+        data = generateClientHeuristicStory(
+          currentProject.prompt,
+          currentProject.style,
+          currentProject.numScenes,
+          currentProject.totalDuration || DEFAULT_TOTAL_DURATION,
+          currentProject.characters,
+          currentProject.aspectRatio,
+          currentProject.language || 'en'
+        );
       }
-
-      const data = await res.json();
 
       const updatedProj: Project = {
         ...currentProject,
@@ -242,27 +258,36 @@ export default function App() {
 
     setEnhancingSceneId(sceneId);
     try {
-      const res = await fetch('/api/story/enhance-prompt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: scene.visualPrompt,
-          style: currentProject.style,
-          cameraMovement: scene.cameraMovement,
-          lighting: scene.lighting,
-        }),
-      });
+      let enhanced = '';
+      try {
+        const res = await fetch('/api/story/enhance-prompt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: scene.visualPrompt,
+            style: currentProject.style,
+            cameraMovement: scene.cameraMovement,
+            lighting: scene.lighting,
+          }),
+        });
 
-      if (!res.ok) throw new Error('Failed to enhance prompt');
-      const data = await res.json();
-
-      if (data.enhancedPrompt) {
-        const updatedScenes = currentProject.scenes.map((s) =>
-          s.id === sceneId ? { ...s, visualPrompt: data.enhancedPrompt } : s
-        );
-        updateProject({ ...currentProject, scenes: updatedScenes });
-        showToast('Scene prompt enhanced with cinematic details!', 'success');
+        if (res.ok) {
+          const data = await res.json();
+          enhanced = data.enhancedPrompt;
+        }
+      } catch {
+        // Fallback for static hosting
       }
+
+      if (!enhanced) {
+        enhanced = enhanceClientPrompt(scene.visualPrompt, currentProject.style);
+      }
+
+      const updatedScenes = currentProject.scenes.map((s) =>
+        s.id === sceneId ? { ...s, visualPrompt: enhanced } : s
+      );
+      updateProject({ ...currentProject, scenes: updatedScenes });
+      showToast('Scene prompt enhanced with cinematic details!', 'success');
     } catch (e: any) {
       showToast('Could not enhance prompt: ' + e.message, 'error');
     } finally {

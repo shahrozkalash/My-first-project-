@@ -166,6 +166,9 @@ export interface Scene {
   operationName?: string;
   engineJobId?: string;
   engineProgress?: number;
+  // Cinematic Transition to following scene
+  transition?: Transition;
+  Transition?: Transition;
 
   // Audio & Lip-Sync extensions
   dialogueLines?: DialogueLine[];
@@ -175,6 +178,26 @@ export interface Scene {
   mixedVideoUrl?: string;
   mixedAudioUrl?: string;
 }
+
+export type CinematicTransitionType =
+  | 'cut'
+  | 'dissolve'
+  | 'fade-black'
+  | 'fade-white'
+  | 'wipe-left'
+  | 'wipe-right'
+  | 'whip-pan'
+  | 'zoom';
+
+export interface SceneTransition {
+  type: CinematicTransitionType;
+  duration: number; // in seconds (e.g., 0.0 for hard cut, 0.2s - 3.0s for transitions)
+  label?: string;
+  description?: string;
+}
+
+// Direct alias matching requested 'Transition' type name
+export type Transition = SceneTransition;
 
 export interface SubtitleSettings {
   enabled: boolean;

@@ -7,9 +7,14 @@
     "dev": "tsx server.ts",
     "start": "tsx server.ts",
     "build": "vite build",
+    "build:gh-pages": "BUILD_FOR_GH_PAGES=true vite build --base=/storymontionai/",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "npx tsx scripts/test_fight_planner.ts && npx tsx scripts/test_audio_pipeline.ts && npx tsx scripts/test_quality_and_build.ts",
+    "test:fight": "npx tsx scripts/test_fight_planner.ts",
+    "test:audio": "npx tsx scripts/test_audio_pipeline.ts",
+    "test:build": "npx tsx scripts/test_quality_and_build.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

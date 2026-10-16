@@ -9,9 +9,10 @@
  * 6. Mix audio and export MP4
  */
 
-import { detectSceneDialogue, detectSceneSoundEffects, generateHeuristicStory } from '../server';
+process.env.TEST_MODE = '1';
 
 async function runPipelineTest() {
+  const { detectSceneDialogue, detectSceneSoundEffects, generateHeuristicStory } = await import('../server');
   console.log('================================================================');
   console.log('   STORYMOTION AI - AUDIO & LIP-SYNC PIPELINE VERIFICATION TEST');
   console.log('================================================================\n');

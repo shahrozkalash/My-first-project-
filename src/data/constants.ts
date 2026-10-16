@@ -1,4 +1,14 @@
-import { AspectRatio, CameraMovement, LightingMood, Project, StyleOption, VideoResolution, VideoResolutionOption } from '../types';
+import {
+  AspectRatio,
+  CameraMovement,
+  CinematicTransitionType,
+  LightingMood,
+  Project,
+  SceneTransition,
+  StyleOption,
+  VideoResolution,
+  VideoResolutionOption,
+} from '../types';
 
 export const VIDEO_RESOLUTIONS: VideoResolutionOption[] = [
   {
@@ -44,6 +54,116 @@ export function getResolutionDimensions(
   const opt = VIDEO_RESOLUTIONS.find((r) => r.id === resolution) || VIDEO_RESOLUTIONS[1];
   return aspectRatio === '9:16' ? opt.portraitDimensions : opt.landscapeDimensions;
 }
+
+export interface CinematicTransitionOption {
+  id: CinematicTransitionType;
+  label: string;
+  tagline: string;
+  description: string;
+  defaultDuration: number;
+  minDuration: number;
+  maxDuration: number;
+  step: number;
+  iconType: 'cut' | 'dissolve' | 'fade-black' | 'fade-white' | 'wipe-left' | 'wipe-right' | 'whip-pan' | 'zoom';
+}
+
+export const CINEMATIC_TRANSITIONS: CinematicTransitionOption[] = [
+  {
+    id: 'cut',
+    label: 'Hard Cut',
+    tagline: 'Instantaneous change (0s)',
+    description: 'Direct cut from this scene to the next with zero overlap. Clean, modern, standard editing pace.',
+    defaultDuration: 0,
+    minDuration: 0,
+    maxDuration: 0,
+    step: 0.1,
+    iconType: 'cut',
+  },
+  {
+    id: 'dissolve',
+    label: 'Cross Dissolve',
+    tagline: 'Smooth optical blend',
+    description: 'Gradual cross-fade blending the end of this shot seamlessly into the next. Signals passage of time or thematic continuity.',
+    defaultDuration: 1.0,
+    minDuration: 0.2,
+    maxDuration: 3.0,
+    step: 0.1,
+    iconType: 'dissolve',
+  },
+  {
+    id: 'fade-black',
+    label: 'Fade to Black',
+    tagline: 'Dramatic pause & closure',
+    description: 'Dips the scene to pure darkness before the next shot emerges. Signals chapter breaks, heavy drama, or time jumps.',
+    defaultDuration: 1.0,
+    minDuration: 0.3,
+    maxDuration: 3.0,
+    step: 0.1,
+    iconType: 'fade-black',
+  },
+  {
+    id: 'fade-white',
+    label: 'Fade to White',
+    tagline: 'High-key flash / revelation',
+    description: 'Bright ethereal bloom wash transition. Perfect for flashbacks, sudden realizations, explosions, or celestial shifts.',
+    defaultDuration: 0.6,
+    minDuration: 0.2,
+    maxDuration: 2.0,
+    step: 0.1,
+    iconType: 'fade-white',
+  },
+  {
+    id: 'wipe-left',
+    label: 'Wipe Left',
+    tagline: 'Directional push left',
+    description: 'Crisp horizontal boundary sweeps right-to-left across the frame to unveil the following scene.',
+    defaultDuration: 0.8,
+    minDuration: 0.3,
+    maxDuration: 2.0,
+    step: 0.1,
+    iconType: 'wipe-left',
+  },
+  {
+    id: 'wipe-right',
+    label: 'Wipe Right',
+    tagline: 'Classic adventure wipe',
+    description: 'Sweeps across the frame left-to-right, reminiscent of classic sci-fi serials and dynamic adventure cinema.',
+    defaultDuration: 0.8,
+    minDuration: 0.3,
+    maxDuration: 2.0,
+    step: 0.1,
+    iconType: 'wipe-right',
+  },
+  {
+    id: 'whip-pan',
+    label: 'Whip Pan',
+    tagline: 'Kinetic motion blur snap',
+    description: 'Rapid camera swivel with high directional blur snapping into the next angle. Ideal for fight scenes and urgent tempo.',
+    defaultDuration: 0.4,
+    minDuration: 0.2,
+    maxDuration: 1.0,
+    step: 0.1,
+    iconType: 'whip-pan',
+  },
+  {
+    id: 'zoom',
+    label: 'Zoom / Push',
+    tagline: 'Dynamic focal plunge',
+    description: 'Accelerates the camera forward with rapid focal compression straight into the focal subject of the next scene.',
+    defaultDuration: 0.5,
+    minDuration: 0.2,
+    maxDuration: 1.5,
+    step: 0.1,
+    iconType: 'zoom',
+  },
+];
+
+export const DEFAULT_SCENE_TRANSITION: SceneTransition = {
+  type: 'cut',
+  duration: 0,
+  label: 'Hard Cut',
+  description: 'Direct cut from this scene to the next',
+};
 
 export const VISUAL_STYLES: StyleOption[] = [
   {

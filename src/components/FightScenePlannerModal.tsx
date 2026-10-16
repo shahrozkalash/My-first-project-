@@ -44,8 +44,11 @@ import {
   SUPPORTED_LOCAL_LLM_MODELS,
   VISUAL_STYLES,
 } from '../data/constants';
-import { localHelperClient } from '../utils/localHelperClient';
-import { validateFightScenePlan, convertFightPlanToScenes } from '../utils/fightPlannerEngine';
+import {
+  validateFightScenePlan,
+  convertFightPlanToScenes,
+  generateHeuristicFightScenePlan,
+} from '../utils/fightPlannerEngine';
 
 interface FightScenePlannerModalProps {
   isOpen: boolean;
@@ -198,8 +201,8 @@ export const FightScenePlannerModal: React.FC<FightScenePlannerModalProps> = ({
         throw new Error(errJson.error || 'Failed to generate fight plan');
       }
 
-      const data = await res.json();
-      if (data.success && data.plan) {
+      const data = await res.json().catch(() => null);
+      if (data && data.success && data.plan) {
         setCurrentPlan(data.plan);
         setActiveStep('review');
         onShowToast(
@@ -209,10 +212,30 @@ export const FightScenePlannerModal: React.FC<FightScenePlannerModalProps> = ({
           'success'
         );
       } else {
-        throw new Error(data.message || 'Unknown response from planner');
+        throw new Error(data?.message || 'Unknown response from planner');
       }
     } catch (err: any) {
-      onShowToast(`Planner error: ${err.message}`, 'error');
+      // Resilient fallback for static hosting (GitHub Pages) or offline helper
+      try {
+        const localPlan = generateHeuristicFightScenePlan({
+          storyContext,
+          combatStyle,
+          pacing,
+          environment,
+          previousSceneEnding,
+          targetDuration,
+          numShots,
+          visualStyle,
+          aspectRatio: activeProject.aspectRatio,
+          characters: activeProject.characters,
+          modelId: selectedModelId,
+        });
+        setCurrentPlan(localPlan);
+        setActiveStep('review');
+        onShowToast('Synthesized connected fight choreography via local engine!', 'success');
+      } catch (fallbackErr: any) {
+        onShowToast(`Planner error: ${err.message}`, 'error');
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -301,6 +324,7 @@ export const FightScenePlannerModal: React.FC<FightScenePlannerModalProps> = ({
       return;
     }
 
+    let newScenes: Scene[] = [];
     try {
       const res = await fetch('/api/fight-planner/handoff-to-wan', {
         method: 'POST',
@@ -311,30 +335,36 @@ export const FightScenePlannerModal: React.FC<FightScenePlannerModalProps> = ({
         }),
       });
 
-      if (!res.ok) {
-        throw new Error('Failed to hand off fight plan to WAN scenes');
+      if (res.ok) {
+        const data = await res.json();
+        newScenes = data.scenes || [];
       }
-
-      const data = await res.json();
-      const newScenes: Scene[] = data.scenes;
-
-      // Append fight scenes to project
-      const updatedProject: Project = {
-        ...activeProject,
-        scenes: [...activeProject.scenes, ...newScenes],
-        numScenes: activeProject.scenes.length + newScenes.length,
-        totalDuration: activeProject.totalDuration + currentPlan.targetTotalDuration,
-      };
-
-      onUpdateProject(updatedProject);
-      onShowToast(
-        `Added ${newScenes.length} choreographed fight shots to project! Ready for WAN rendering.`,
-        'success'
-      );
-      onClose();
-    } catch (err: any) {
-      onShowToast(`Handoff error: ${err.message}`, 'error');
+    } catch {
+      // Backend unavailable (static hosting or offline mode)
     }
+
+    // Direct fallback if server route not available
+    if (!newScenes || newScenes.length === 0) {
+      newScenes = convertFightPlanToScenes(
+        validation.repairedPlan || currentPlan,
+        activeProject.scenes.length
+      );
+    }
+
+    // Append fight scenes to project
+    const updatedProject: Project = {
+      ...activeProject,
+      scenes: [...activeProject.scenes, ...newScenes],
+      numScenes: activeProject.scenes.length + newScenes.length,
+      totalDuration: activeProject.totalDuration + currentPlan.targetTotalDuration,
+    };
+
+    onUpdateProject(updatedProject);
+    onShowToast(
+      `Added ${newScenes.length} choreographed fight shots to project! Ready for WAN rendering.`,
+      'success'
+    );
+    onClose();
   };
 
   return (

@@ -1,8 +1,48 @@
+# Node & Build artifacts
 node_modules/
 build/
 dist/
 coverage/
+server.js
 .DS_Store
 *.log
+
+# Environment variables & secrets (keep .env.example public only)
 .env*
 !.env.example
+*.pem
+*.key
+*.token
+
+# Large AI model checkpoints and neural weights (NEVER commit to Git)
+*.safetensors
+*.pt
+*.pth
+*.bin
+*.onnx
+*.gguf
+*.checkpoint
+models/
+windows-helper/models/
+scripts/models/
+
+# Generated video outputs, clips, and multi-track audio renders
+*.mp4
+*.webm
+*.avi
+*.mov
+*.wav
+*.mp3
+windows-helper/outputs/
+windows-helper/temp/
+windows-helper/audio_cache/
+
+# Python Virtual Environments and Caches
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+env/
+windows-helper/venv/
+.pytest_cache/

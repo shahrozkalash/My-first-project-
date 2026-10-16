@@ -26,9 +26,29 @@ import {
   RefreshCw,
   Sliders,
   Swords,
+  Scissors,
+  ArrowRightLeft,
+  ArrowLeft,
+  ArrowRight,
+  Moon,
+  Sun,
+  Maximize2,
 } from 'lucide-react';
-import { CAMERA_MOVEMENTS, LIGHTING_MOODS } from '../data/constants';
-import { Character, Scene, CameraMovement, LightingMood } from '../types';
+import {
+  CAMERA_MOVEMENTS,
+  LIGHTING_MOODS,
+  CINEMATIC_TRANSITIONS,
+  DEFAULT_SCENE_TRANSITION,
+  CinematicTransitionOption,
+} from '../data/constants';
+import {
+  Character,
+  Scene,
+  CameraMovement,
+  LightingMood,
+  CinematicTransitionType,
+  SceneTransition,
+} from '../types';
 import { formatDuration } from '../utils/duration';
 
 interface SceneListProps {
@@ -36,6 +56,7 @@ interface SceneListProps {
   characters: Character[];
   totalDuration?: number;
   onUpdateScene: (scene: Scene) => void;
+  onUpdateScenes?: (scenes: Scene[]) => void;
   onSceneDurationChange?: (sceneId: string, newDuration: number) => void;
   onRedistributeEvenly?: () => void;
   onAddScene: () => void;
@@ -60,6 +81,7 @@ export const SceneList: React.FC<SceneListProps> = ({
   characters,
   totalDuration = 60,
   onUpdateScene,
+  onUpdateScenes,
   onSceneDurationChange,
   onRedistributeEvenly,
   onAddScene,
@@ -79,6 +101,7 @@ export const SceneList: React.FC<SceneListProps> = ({
   onOpenFightPlanner,
 }) => {
   const [expandedScenes, setExpandedScenes] = useState<Record<string, boolean>>({});
+  const [activeTransitionPopoverSceneId, setActiveTransitionPopoverSceneId] = useState<string | null>(null);
 
   const toggleExpand = (id: string) => {
     setExpandedScenes((prev) => ({
@@ -99,6 +122,77 @@ export const SceneList: React.FC<SceneListProps> = ({
       ...scene,
       characterIds: updatedChars,
     });
+  };
+
+  const getTransitionIcon = (iconType: string, className = 'w-3.5 h-3.5') => {
+    switch (iconType) {
+      case 'dissolve':
+        return <ArrowRightLeft className={className} />;
+      case 'fade-black':
+        return <Moon className={className} />;
+      case 'fade-white':
+        return <Sun className={className} />;
+      case 'wipe-left':
+        return <ArrowLeft className={className} />;
+      case 'wipe-right':
+        return <ArrowRight className={className} />;
+      case 'whip-pan':
+        return <Zap className={className} />;
+      case 'zoom':
+        return <Maximize2 className={className} />;
+      case 'cut':
+      default:
+        return <Scissors className={className} />;
+    }
+  };
+
+  const handleSelectTransitionType = (scene: Scene, type: CinematicTransitionType) => {
+    const current = scene.transition || DEFAULT_SCENE_TRANSITION;
+    const opt = CINEMATIC_TRANSITIONS.find((t) => t.id === type) || CINEMATIC_TRANSITIONS[0];
+    const duration =
+      type === 'cut'
+        ? 0
+        : current.duration > 0 && current.type !== 'cut'
+        ? current.duration
+        : opt.defaultDuration;
+
+    onUpdateScene({
+      ...scene,
+      transition: {
+        type,
+        duration,
+        label: opt.label,
+        description: opt.description,
+      },
+    });
+  };
+
+  const handleUpdateTransitionDuration = (scene: Scene, duration: number) => {
+    const current = scene.transition || DEFAULT_SCENE_TRANSITION;
+    const opt = CINEMATIC_TRANSITIONS.find((t) => t.id === current.type) || CINEMATIC_TRANSITIONS[0];
+    const validDuration = Math.max(0.1, Math.min(5.0, Math.round(duration * 10) / 10));
+
+    onUpdateScene({
+      ...scene,
+      transition: {
+        ...current,
+        duration: validDuration,
+        label: opt.label,
+      },
+    });
+  };
+
+  const handleApplyTransitionToAll = (sourceScene: Scene) => {
+    const trans = sourceScene.transition || DEFAULT_SCENE_TRANSITION;
+    const updatedScenes = scenes.map((s) => ({
+      ...s,
+      transition: { ...trans },
+    }));
+    if (onUpdateScenes) {
+      onUpdateScenes(updatedScenes);
+    } else {
+      updatedScenes.forEach((s) => onUpdateScene(s));
+    }
   };
 
   const currentTotalDuration = scenes.reduce((sum, s) => sum + (Number(s.duration) || 0), 0);
@@ -232,14 +326,14 @@ export const SceneList: React.FC<SceneListProps> = ({
             const isEnhancing = enhancingSceneId === scene.id;
 
             return (
-              <div
-                key={scene.id}
-                className={`border rounded-xl transition-all overflow-hidden ${
-                  isSelected
-                    ? 'border-blue-500/80 bg-zinc-900/90 shadow-lg shadow-blue-500/10 ring-1 ring-blue-500/40'
-                    : 'border-zinc-800/80 bg-zinc-900/60 hover:border-zinc-700/90'
-                }`}
-              >
+              <React.Fragment key={scene.id}>
+                <div
+                  className={`border rounded-xl transition-all overflow-hidden ${
+                    isSelected
+                      ? 'border-blue-500/80 bg-zinc-900/90 shadow-lg shadow-blue-500/10 ring-1 ring-blue-500/40'
+                      : 'border-zinc-800/80 bg-zinc-900/60 hover:border-zinc-700/90'
+                  }`}
+                >
                 {/* Scene Header Strip */}
                 <div className="p-3 sm:px-4 bg-zinc-950/60 border-b border-zinc-800/60 flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2.5">
@@ -278,6 +372,16 @@ export const SceneList: React.FC<SceneListProps> = ({
                       <span className="text-[10px] font-bold text-rose-400 bg-rose-950/60 border border-rose-500/40 px-2 py-0.5 rounded-full inline-flex items-center gap-1" title={scene.generationError}>
                         <AlertTriangle className="w-3 h-3" />
                         <span>Render Error</span>
+                      </span>
+                    )}
+
+                    {scene.transition && scene.transition.type !== 'cut' && (
+                      <span
+                        className="text-[10px] font-bold text-purple-300 bg-purple-950/60 border border-purple-500/40 px-2 py-0.5 rounded-full inline-flex items-center gap-1"
+                        title={`Transition: ${scene.transition.label || scene.transition.type} (${scene.transition.duration}s)`}
+                      >
+                        {getTransitionIcon(scene.transition.type, 'w-2.5 h-2.5 text-purple-400')}
+                        <span>{scene.transition.label || scene.transition.type} ({scene.transition.duration}s)</span>
                       </span>
                     )}
                   </div>
@@ -610,6 +714,187 @@ export const SceneList: React.FC<SceneListProps> = ({
                       </div>
                     )}
 
+                    {/* Cinematic Transition Settings */}
+                    {(() => {
+                      const currentTrans = scene.transition || DEFAULT_SCENE_TRANSITION;
+                      const activeOpt =
+                        CINEMATIC_TRANSITIONS.find((t) => t.id === currentTrans.type) ||
+                        CINEMATIC_TRANSITIONS[0];
+                      const isLastScene = index === scenes.length - 1;
+                      const nextScene = !isLastScene ? scenes[index + 1] : null;
+
+                      return (
+                        <div className="p-3.5 bg-zinc-950/70 border border-zinc-800/90 rounded-xl space-y-3">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                                <ArrowRightLeft className="w-3.5 h-3.5" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-semibold text-white">
+                                    {nextScene
+                                      ? `Cinematic Transition to Shot ${nextScene.sceneNumber}: ${nextScene.title}`
+                                      : 'Cinematic Transition: Final Outro / Ending'}
+                                  </span>
+                                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                    {currentTrans.type === 'cut'
+                                      ? 'Hard Cut (0s)'
+                                      : `${activeOpt.label} (${currentTrans.duration.toFixed(1)}s)`}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-zinc-400">
+                                  {nextScene
+                                    ? `Directs visual pacing and optical transition from Shot ${scene.sceneNumber} into Shot ${nextScene.sceneNumber}`
+                                    : 'Directs how the final sequence resolves and fades as the credits roll'}
+                                </p>
+                              </div>
+                            </div>
+
+                            {scenes.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleApplyTransitionToAll(scene)}
+                                className="text-[11px] font-medium text-zinc-300 hover:text-white bg-zinc-800/70 hover:bg-zinc-800 border border-zinc-700/80 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1.5 active:scale-95"
+                                title="Apply this transition type and duration across all shots"
+                              >
+                                <Copy className="w-3 h-3 text-purple-400" />
+                                <span>Apply to All Shots</span>
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Transition Type Options Grid */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {CINEMATIC_TRANSITIONS.map((opt) => {
+                              const isSelected = currentTrans.type === opt.id;
+                              return (
+                                <button
+                                  key={opt.id}
+                                  type="button"
+                                  onClick={() => handleSelectTransitionType(scene, opt.id)}
+                                  className={`p-2.5 rounded-lg border text-left transition-all relative flex flex-col justify-between ${
+                                    isSelected
+                                      ? 'border-purple-500 bg-purple-950/40 ring-1 ring-purple-400/50 shadow-sm shadow-purple-600/20'
+                                      : 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-700 hover:bg-zinc-900'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className={isSelected ? 'text-purple-300' : 'text-zinc-400'}>
+                                        {getTransitionIcon(opt.iconType, 'w-3.5 h-3.5')}
+                                      </span>
+                                      <span className="text-xs font-semibold text-white tracking-tight">
+                                        {opt.label}
+                                      </span>
+                                    </div>
+                                    {isSelected && (
+                                      <div className="w-3.5 h-3.5 rounded-full bg-purple-500 flex items-center justify-center shrink-0">
+                                        <Check className="w-2.5 h-2.5 text-white stroke-[3]" />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <p className="text-[10px] text-zinc-400 mt-1 line-clamp-1">
+                                    {opt.tagline}
+                                  </p>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Duration Settings (when not instant cut) */}
+                          {currentTrans.type !== 'cut' ? (
+                            <div className="p-3 bg-zinc-900/70 border border-zinc-800 rounded-lg flex items-center justify-between gap-3 flex-wrap">
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-2">
+                                  <Clock className="w-3.5 h-3.5 text-purple-400" />
+                                  <span className="text-xs text-zinc-200 font-semibold">
+                                    Transition Overlap Duration:
+                                  </span>
+                                  <span className="text-xs font-mono font-bold text-purple-300">
+                                    {currentTrans.duration.toFixed(1)}s
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-zinc-400">
+                                  {activeOpt.description}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {/* Stepper */}
+                                <div className="flex items-center border border-zinc-800 rounded-lg bg-zinc-950 overflow-hidden">
+                                  <button
+                                    type="button"
+                                    disabled={currentTrans.duration <= 0.2}
+                                    onClick={() =>
+                                      handleUpdateTransitionDuration(
+                                        scene,
+                                        Math.max(0.2, currentTrans.duration - 0.1)
+                                      )
+                                    }
+                                    className="w-7 h-7 flex items-center justify-center text-zinc-300 hover:text-white hover:bg-zinc-800 disabled:opacity-30 text-xs font-bold transition-colors"
+                                    title="Decrease by 0.1s"
+                                  >
+                                    -
+                                  </button>
+                                  <input
+                                    type="number"
+                                    step={0.1}
+                                    min={0.2}
+                                    max={3.0}
+                                    value={currentTrans.duration}
+                                    onChange={(e) =>
+                                      handleUpdateTransitionDuration(
+                                        scene,
+                                        parseFloat(e.target.value) || 0.5
+                                      )
+                                    }
+                                    className="w-12 text-center bg-transparent text-xs font-mono font-semibold text-zinc-200 focus:outline-none"
+                                  />
+                                  <button
+                                    type="button"
+                                    disabled={currentTrans.duration >= 3.0}
+                                    onClick={() =>
+                                      handleUpdateTransitionDuration(
+                                        scene,
+                                        Math.min(3.0, currentTrans.duration + 0.1)
+                                      )
+                                    }
+                                    className="w-7 h-7 flex items-center justify-center text-zinc-300 hover:text-white hover:bg-zinc-800 disabled:opacity-30 text-xs font-bold transition-colors"
+                                    title="Increase by 0.1s"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+
+                                {/* Quick Presets */}
+                                <div className="flex items-center gap-1">
+                                  {[0.3, 0.5, 0.8, 1.0, 1.5, 2.0].map((dur) => (
+                                    <button
+                                      key={dur}
+                                      type="button"
+                                      onClick={() => handleUpdateTransitionDuration(scene, dur)}
+                                      className={`px-2 py-1 text-[10px] rounded-md font-mono transition-colors ${
+                                        Math.abs(currentTrans.duration - dur) < 0.05
+                                          ? 'bg-purple-600 text-white font-bold'
+                                          : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                                      }`}
+                                    >
+                                      {dur}s
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-zinc-400 italic">
+                              Hard Cut selected: Instantaneous frame transition with zero duration overlap.
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
+
                     {/* Audio & Lip-Sync Quick Status Strip */}
                     <div className="pt-2.5 pb-1 border-t border-zinc-800/80 flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2 flex-wrap text-[11px]">
@@ -794,7 +1079,214 @@ export const SceneList: React.FC<SceneListProps> = ({
                     </div>
                   </div>
                 )}
-              </div>
+                </div>
+
+                {/* Inter-Scene Cinematic Transition Connector between Shot index+1 and Shot index+2 */}
+                {index < scenes.length - 1 && (() => {
+                  const currentTrans = scene.transition || DEFAULT_SCENE_TRANSITION;
+                  const transOpt =
+                    CINEMATIC_TRANSITIONS.find((t) => t.id === currentTrans.type) ||
+                    CINEMATIC_TRANSITIONS[0];
+                  const isPopoverOpen = activeTransitionPopoverSceneId === scene.id;
+                  const nextScene = scenes[index + 1];
+
+                  return (
+                    <div className="relative py-1.5 flex flex-col items-center justify-center my-0.5">
+                      {/* Horizontal connector line */}
+                      <div className="absolute inset-x-8 top-1/2 -translate-y-1/2 h-px bg-gradient-to-r from-transparent via-zinc-800 to-transparent pointer-events-none" />
+
+                      {/* Center Transition Trigger Button */}
+                      <div className="relative z-10 flex flex-col items-center">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveTransitionPopoverSceneId(
+                              isPopoverOpen ? null : scene.id
+                            )
+                          }
+                          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium border transition-all shadow-sm ${
+                            isPopoverOpen
+                              ? 'bg-purple-950 border-purple-500 text-purple-200 ring-2 ring-purple-500/30 shadow-purple-900/30'
+                              : currentTrans.type === 'cut'
+                              ? 'bg-zinc-950/95 border-zinc-800/90 text-zinc-400 hover:border-purple-500/40 hover:text-purple-300'
+                              : 'bg-purple-950/80 border-purple-500/50 text-purple-300 hover:border-purple-400 hover:text-white'
+                          }`}
+                          title={`Click to edit transition between Shot ${scene.sceneNumber} and Shot ${nextScene.sceneNumber}`}
+                        >
+                          <span className="text-purple-400">
+                            {getTransitionIcon(transOpt.iconType, 'w-3 h-3')}
+                          </span>
+                          <span className="font-semibold text-zinc-200">
+                            {transOpt.label}
+                          </span>
+                          {currentTrans.type !== 'cut' && (
+                            <span className="text-[10px] font-mono text-purple-300 bg-purple-500/20 px-1 rounded">
+                              {currentTrans.duration.toFixed(1)}s
+                            </span>
+                          )}
+                          <span className="text-zinc-500 text-[10px] mx-0.5">→</span>
+                          <span className="text-[10px] text-zinc-400 font-normal">
+                            Shot {nextScene.sceneNumber}
+                          </span>
+                          <ChevronDown
+                            className={`w-3 h-3 text-zinc-400 transition-transform ${
+                              isPopoverOpen ? 'rotate-180 text-purple-400' : ''
+                            }`}
+                          />
+                        </button>
+
+                        {/* Quick Inline Transition Popover Drawer */}
+                        {isPopoverOpen && (
+                          <div className="mt-2.5 w-full max-w-2xl p-3.5 bg-zinc-950 border border-purple-500/50 rounded-2xl shadow-2xl space-y-3 animate-in fade-in slide-in-from-top-2">
+                            <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
+                              <div className="flex items-center gap-2">
+                                <div className="p-1 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                                  <ArrowRightLeft className="w-3.5 h-3.5" />
+                                </div>
+                                <div>
+                                  <h4 className="text-xs font-semibold text-white">
+                                    Transition: Shot {scene.sceneNumber} ({scene.title}) → Shot {nextScene.sceneNumber} ({nextScene.title})
+                                  </h4>
+                                  <p className="text-[10px] text-zinc-400">
+                                    Choose transition style and duration between these two consecutive shots
+                                  </p>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => setActiveTransitionPopoverSceneId(null)}
+                                className="text-[10px] text-zinc-400 hover:text-white px-2 py-0.5 rounded-md hover:bg-zinc-800"
+                              >
+                                Close
+                              </button>
+                            </div>
+
+                            {/* Transition Option Buttons */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                              {CINEMATIC_TRANSITIONS.map((opt) => {
+                                const isSelected = currentTrans.type === opt.id;
+                                return (
+                                  <button
+                                    key={opt.id}
+                                    type="button"
+                                    onClick={() => handleSelectTransitionType(scene, opt.id)}
+                                    className={`p-2 rounded-lg border text-left transition-all relative flex flex-col justify-between ${
+                                      isSelected
+                                        ? 'border-purple-500 bg-purple-950/50 ring-1 ring-purple-400/40 text-white'
+                                        : 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-700 hover:bg-zinc-900 text-zinc-300'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between gap-1">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className={isSelected ? 'text-purple-300' : 'text-zinc-400'}>
+                                          {getTransitionIcon(opt.iconType, 'w-3 h-3')}
+                                        </span>
+                                        <span className="text-[11px] font-semibold text-white">
+                                          {opt.label}
+                                        </span>
+                                      </div>
+                                      {isSelected && (
+                                        <div className="w-3 h-3 rounded-full bg-purple-500 flex items-center justify-center shrink-0">
+                                          <Check className="w-2 h-2 text-white stroke-[3]" />
+                                        </div>
+                                      )}
+                                    </div>
+                                    <span className="text-[9px] text-zinc-400 mt-0.5 line-clamp-1">
+                                      {opt.tagline}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {/* Quick Duration Settings if not Cut */}
+                            {currentTrans.type !== 'cut' && (
+                              <div className="p-2.5 bg-zinc-900/80 border border-zinc-800 rounded-lg flex items-center justify-between gap-2 flex-wrap text-xs">
+                                <div className="flex items-center gap-1.5 text-zinc-300">
+                                  <Clock className="w-3 h-3 text-purple-400" />
+                                  <span className="text-[11px] font-medium">Duration:</span>
+                                  <span className="font-mono font-bold text-purple-300 text-[11px]">
+                                    {currentTrans.duration.toFixed(1)}s
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-1.5">
+                                  <div className="flex items-center border border-zinc-800 rounded bg-zinc-950 overflow-hidden">
+                                    <button
+                                      type="button"
+                                      disabled={currentTrans.duration <= 0.2}
+                                      onClick={() =>
+                                        handleUpdateTransitionDuration(
+                                          scene,
+                                          Math.max(0.2, currentTrans.duration - 0.1)
+                                        )
+                                      }
+                                      className="w-5 h-5 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 disabled:opacity-30 text-xs font-bold"
+                                    >
+                                      -
+                                    </button>
+                                    <span className="w-10 text-center text-[11px] font-mono font-semibold text-zinc-200">
+                                      {currentTrans.duration.toFixed(1)}s
+                                    </span>
+                                    <button
+                                      type="button"
+                                      disabled={currentTrans.duration >= 3.0}
+                                      onClick={() =>
+                                        handleUpdateTransitionDuration(
+                                          scene,
+                                          Math.min(3.0, currentTrans.duration + 0.1)
+                                        )
+                                      }
+                                      className="w-5 h-5 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 disabled:opacity-30 text-xs font-bold"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+
+                                  <div className="flex items-center gap-1">
+                                    {[0.3, 0.5, 0.8, 1.0, 1.5, 2.0].map((dur) => (
+                                      <button
+                                        key={dur}
+                                        type="button"
+                                        onClick={() =>
+                                          handleUpdateTransitionDuration(scene, dur)
+                                        }
+                                        className={`px-1.5 py-0.5 text-[9px] font-mono rounded transition-colors ${
+                                          Math.abs(currentTrans.duration - dur) < 0.05
+                                            ? 'bg-purple-600 text-white font-bold'
+                                            : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                                        }`}
+                                      >
+                                        {dur}s
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {scenes.length > 2 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleApplyTransitionToAll(scene);
+                                      setActiveTransitionPopoverSceneId(null);
+                                    }}
+                                    className="text-[10px] text-zinc-400 hover:text-white bg-zinc-800 px-2 py-1 rounded transition-colors flex items-center gap-1"
+                                    title="Apply to all transitions between scenes"
+                                  >
+                                    <Copy className="w-2.5 h-2.5 text-purple-400" />
+                                    <span>Apply to All</span>
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </React.Fragment>
             );
           })}
         </div>

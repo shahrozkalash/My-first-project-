@@ -180,6 +180,9 @@ export function exportStoryboardScript(project: Project) {
     lines.push(`- **Characters Present:** ${s.characterIds.join(', ') || 'None'}`);
     lines.push(`- **Action:** ${s.actionSummary}`);
     if (s.dialogue) lines.push(`- **Dialogue:** "${s.dialogue}"`);
+    if (s.transition) {
+      lines.push(`- **Cinematic Transition:** ${s.transition.label || s.transition.type} (${s.transition.duration}s)`);
+    }
     lines.push(`\n**Video Generation Visual Prompt:**\n\`\`\`\n${s.visualPrompt}\n\`\`\``);
   });
 

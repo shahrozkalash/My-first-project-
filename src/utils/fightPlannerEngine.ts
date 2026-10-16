@@ -9,6 +9,7 @@ import {
   SoundEffectEvent,
   CameraMovement,
   LightingMood,
+  Transition,
 } from '../types';
 import { SUPPORTED_LOCAL_LLM_MODELS } from '../data/constants';
 
@@ -680,6 +681,37 @@ export function generateDeterministicFightPlan(
   };
 }
 
+export const generateHeuristicFightScenePlan = generateDeterministicFightPlan;
+
+function parseShotTransition(transitionStr?: string): Transition {
+  if (!transitionStr) {
+    return { type: 'cut', duration: 0, label: 'Hard Cut', description: 'Direct frame cut' };
+  }
+  const lower = transitionStr.toLowerCase();
+  if (lower.includes('whip') || lower.includes('pan')) {
+    return { type: 'whip-pan', duration: 0.4, label: 'Whip Pan', description: transitionStr };
+  }
+  if (lower.includes('fade') && (lower.includes('white') || lower.includes('light'))) {
+    return { type: 'fade-white', duration: 0.5, label: 'Fade to White', description: transitionStr };
+  }
+  if (lower.includes('fade') || lower.includes('black') || lower.includes('dark')) {
+    return { type: 'fade-black', duration: 0.8, label: 'Fade to Black', description: transitionStr };
+  }
+  if (lower.includes('dissolve') || lower.includes('blend')) {
+    return { type: 'dissolve', duration: 0.8, label: 'Cross Dissolve', description: transitionStr };
+  }
+  if (lower.includes('wipe') && lower.includes('right')) {
+    return { type: 'wipe-right', duration: 0.6, label: 'Wipe Right', description: transitionStr };
+  }
+  if (lower.includes('wipe')) {
+    return { type: 'wipe-left', duration: 0.6, label: 'Wipe Left', description: transitionStr };
+  }
+  if (lower.includes('zoom') || lower.includes('push')) {
+    return { type: 'zoom', duration: 0.5, label: 'Zoom / Push', description: transitionStr };
+  }
+  return { type: 'cut', duration: 0, label: 'Hard Cut', description: transitionStr };
+}
+
 /**
  * Converts approved FightScenePlan shots directly into StoryMotion scenes.
  * Seamlessly hooks into existing audio, lip-sync, and MP4 rendering systems!
@@ -690,6 +722,7 @@ export function convertFightPlanToScenes(
 ): Scene[] {
   return plan.shots.map((shot, idx) => {
     const sceneNum = startIndex + idx + 1;
+    const transitionObj = parseShotTransition(shot.transition);
     const dialogueLines = shot.dialogue
       ? [
           {
@@ -723,6 +756,8 @@ export function convertFightPlanToScenes(
       dialogueLines,
       soundEffects: shot.soundEffects,
       sceneMusicMood: 'suspense' as const,
+      transition: transitionObj,
+      Transition: transitionObj,
     };
   });
 }
