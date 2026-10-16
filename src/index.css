@@ -20,6 +20,15 @@
   h1, h2, h3, h4, .font-display {
     font-family: var(--font-heading);
   }
+
+  .font-urdu {
+    font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu Typesetting', 'Segoe UI', Tahoma, sans-serif;
+    line-height: 2.1;
+  }
+
+  .font-hindi {
+    font-family: 'Noto Sans Devanagari', 'Mangal', 'Nirmala UI', sans-serif;
+  }
 }
 
 /* Custom scrollbar for dark theme */

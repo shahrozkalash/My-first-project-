@@ -18,6 +18,26 @@ export interface StyleOption {
   promptKeyword: string;
 }
 
+export type SupportedLanguage = 'en' | 'ur' | 'hi';
+
+export interface LanguageCapabilityStatus {
+  code: SupportedLanguage;
+  name: string;
+  nativeName: string;
+  direction: 'ltr' | 'rtl';
+  scriptName: string;
+  storyTextStatus: 'full' | 'partial' | 'unsupported';
+  storyTextNotes: string;
+  ttsStatus: 'ready' | 'conditional' | 'unsupported';
+  ttsNotes: string;
+  pronunciationStatus: 'full' | 'partial' | 'unsupported';
+  pronunciationNotes: string;
+  lipSyncStatus: 'tested' | 'experimental' | 'unsupported';
+  lipSyncNotes: string;
+  installedVoiceNames: string[];
+  isVoiceInstalled: boolean;
+}
+
 export interface Character {
   id: string;
   name: string;
@@ -32,6 +52,8 @@ export interface Character {
   voicePitch?: number; // 0.6 - 1.4, default 1.0
   voiceSpeed?: number; // 0.7 - 1.4, default 1.0
   voiceEmotion?: string;
+  preferredLanguage?: SupportedLanguage | string;
+  pronunciationNotes?: string;
 }
 
 export type CameraMovement =
@@ -69,6 +91,9 @@ export interface DialogueLine {
   voiceId?: string;
   speed?: number;
   pitch?: number;
+  language?: SupportedLanguage | string;
+  pronunciationGuide?: string; // Phonetic transliteration / Aerab hint / Schwa guide
+  subtitleTranslation?: string; // Optional English or secondary subtitle translation
 }
 
 export type SoundEffectCategory = 'foley' | 'ambience' | 'impact' | 'nature' | 'movement' | 'scifi_magic';
@@ -136,6 +161,14 @@ export interface Scene {
   mixedAudioUrl?: string;
 }
 
+export interface SubtitleSettings {
+  enabled: boolean;
+  language: SupportedLanguage | 'same_as_audio';
+  fontSize: 'sm' | 'base' | 'lg' | 'xl';
+  showSpeakerName: boolean;
+  rtlMode?: boolean;
+}
+
 export interface AudioSettings {
   masterVolume: number;
   voiceVolume: number;
@@ -144,8 +177,9 @@ export interface AudioSettings {
   globalMusicMood: MusicMood;
   autoDucking: boolean;
   duckingPercent: number; // e.g. 75 means attenuate by 75%
-  language: string;
+  language: SupportedLanguage | string;
   ttsEngine: 'browser_speech' | 'local_piper' | 'local_kokoro';
+  subtitleSettings?: SubtitleSettings;
 }
 
 export interface Project {
@@ -166,6 +200,7 @@ export interface Project {
   isFavorite?: boolean;
   audioSettings?: AudioSettings;
   musicTrack?: MusicTrackConfig;
+  language?: SupportedLanguage | string;
 }
 
 export interface GenerationStep {

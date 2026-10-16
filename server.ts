@@ -140,6 +140,7 @@ app.post('/api/story/generate', async (req, res) => {
       totalDuration = 60,
       characters = [],
       aspectRatio = '16:9',
+      language = 'en',
     } = req.body;
 
     if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
@@ -150,6 +151,18 @@ app.post('/api/story/generate', async (req, res) => {
     const sceneCount = Math.max(2, Math.min(32, Number(numScenes) || 4));
     const distributedDurations = distributeServerDuration(totalMovieDuration, sceneCount);
     const avgDuration = Math.round(totalMovieDuration / sceneCount);
+
+    // Language-specific instructions
+    let languageInstruction = '';
+    if (language === 'ur') {
+      languageInstruction = `LANGUAGE REQUIREMENT: The user has selected URDU (اردو).
+- The story title, logline, genre, character names/roles, action summaries, and dialogue MUST be written in authentic, elegant Urdu (standard Urdu script).
+- CRITICAL: The 'visualPrompt' field for each scene MUST remain in descriptive English with cinematic keywords (${style}), camera motion, and visual details so video generation models (Wan 2.1) synthesize coherent visuals.`;
+    } else if (language === 'hi') {
+      languageInstruction = `LANGUAGE REQUIREMENT: The user has selected HINDI (हिन्दी).
+- The story title, logline, genre, character names/roles, action summaries, and dialogue MUST be written in authentic Hindi (standard Devanagari script).
+- CRITICAL: The 'visualPrompt' field for each scene MUST remain in descriptive English with cinematic keywords (${style}), camera motion, and visual details so video generation models (Wan 2.1) synthesize coherent visuals.`;
+    }
 
     // Try Gemini if API key is present
     if (ai && geminiApiKey && geminiApiKey !== 'MY_GEMINI_API_KEY') {
@@ -168,13 +181,15 @@ CRITICAL REQUIREMENTS:
 3. Maintain strict character consistency across all scenes (same facial structure, hair, clothing, color palette).
 4. Specify camera movement (e.g. "Slow Pan Right", "Cinematic Zoom In", "Dolly Forward", "Dynamic Handheld Tracking", "Low Angle Orbit", "High Angle Crane Down").
 5. Specify lighting & atmosphere (e.g. "Golden hour rim lighting with subtle volumetric haze", "Neon cyan and magenta cyberpunk reflections", "Moody noir shadows with soft keylight").
-6. The "visualPrompt" for each scene must be a rich, descriptive prompt for video generation models, mentioning visual style (${style}), exact subject action, camera movement, composition, and consistency anchors.`;
+6. The "visualPrompt" for each scene must be a rich, descriptive prompt for video generation models, mentioning visual style (${style}), exact subject action, camera movement, composition, and consistency anchors.
+${languageInstruction}`;
 
         const userPrompt = `Story Idea: "${prompt.trim()}"
 Visual Style: ${style}
 Number of Scenes: ${sceneCount}
 Total Movie Duration: ${totalMovieDuration} seconds total (~${avgDuration}s per scene)
 Aspect Ratio: ${aspectRatio}
+Language: ${language}
 
 ${charactersContext}
 
@@ -259,8 +274,8 @@ Generate the story title, logline, genre, character list (with consistent appear
             ];
 
         const mappedScenes = parsed.scenes.map((s: any, idx: number) => {
-          const charName = (s.charactersPresent && s.charactersPresent[0]) || (mappedCharacters[0]?.name) || 'Narrator';
-          const dialogueLines = detectSceneDialogue(s.dialogue || '', s.actionSummary || '', charName, idx);
+          const charName = (s.charactersPresent && s.charactersPresent[0]) || (mappedCharacters[0]?.name) || (language === 'ur' ? 'راوی' : (language === 'hi' ? 'सूत्रधार' : 'Narrator'));
+          const dialogueLines = detectSceneDialogue(s.dialogue || '', s.actionSummary || '', charName, idx, language);
           const soundEffects = detectSceneSoundEffects(s.actionSummary || '', prompt, idx);
           const sceneMusicMood = detectSceneMusicMood(parsed.genre || '', s.actionSummary || '');
 
@@ -289,6 +304,7 @@ Generate the story title, logline, genre, character list (with consistent appear
           totalDuration: totalMovieDuration,
           characters: mappedCharacters,
           scenes: mappedScenes,
+          language: language || 'en',
           audioSettings: {
             masterVolume: 1.0,
             voiceVolume: 1.0,
@@ -297,8 +313,15 @@ Generate the story title, logline, genre, character list (with consistent appear
             globalMusicMood: detectSceneMusicMood(parsed.genre || '', prompt),
             autoDucking: true,
             duckingPercent: 75,
-            language: 'en-US',
+            language: language || 'en',
             ttsEngine: 'browser_speech',
+            subtitleSettings: {
+              enabled: true,
+              language: 'same_as_audio',
+              fontSize: 'base',
+              showSpeakerName: true,
+              rtlMode: language === 'ur',
+            },
           },
           musicTrack: {
             mood: detectSceneMusicMood(parsed.genre || '', prompt),
@@ -316,7 +339,7 @@ Generate the story title, logline, genre, character list (with consistent appear
     }
 
     // Heuristic Smart Story Engine (Works without external API keys or offline)
-    const fallbackStory = generateHeuristicStory(prompt, style, sceneCount, totalMovieDuration, characters, aspectRatio);
+    const fallbackStory = generateHeuristicStory(prompt, style, sceneCount, totalMovieDuration, characters, aspectRatio, language);
     return res.json(fallbackStory);
   } catch (err: any) {
     console.error('Error generating story:', err);
@@ -438,33 +461,74 @@ export function detectSceneSoundEffects(action: string, prompt: string, sceneIdx
   return sfxList;
 }
 
-export function detectSceneDialogue(dialogueText: string, actionSummary: string, characterName: string, sceneIdx: number): any[] {
-  const lineText = dialogueText && dialogueText.trim().length > 0
-    ? dialogueText.trim()
-    : (sceneIdx === 0
-      ? `The journey begins now. We cannot turn back.`
-      : sceneIdx === 1
-      ? `Look closely... the energy signature is shifting.`
-      : sceneIdx === 2
-      ? `Hold your ground! We are almost through!`
-      : `We made it. The horizon has never looked clearer.`);
+export function detectSceneDialogue(
+  dialogueText: string,
+  actionSummary: string,
+  characterName: string,
+  sceneIdx: number,
+  language: string = 'en'
+): any[] {
+  let lineText = '';
+
+  if (dialogueText && dialogueText.trim().length > 0) {
+    lineText = dialogueText.trim();
+  } else if (language === 'ur') {
+    const urduLines = [
+      'ہمیں آگے بڑھنا ہوگا، اب پیچھے ہٹنے کا کوئی راستہ نہیں۔',
+      'دیکھو... یہ نشانی کچھ اور ہی کہانی بیان کر رہی ہے۔',
+      'ثابت قدم رہو! ہم اپنی منزل کے بالکل قریب ہیں۔',
+      'ہم نے کر دکھایا۔ افق کبھی اتنا خوبصورت نہیں لگا تھا۔',
+    ];
+    lineText = urduLines[sceneIdx % urduLines.length];
+  } else if (language === 'hi') {
+    const hindiLines = [
+      'सफ़र शुरू हो चुका है, अब पीछे मुड़कर नहीं देखना।',
+      'ध्यान से देखो... यह ऊर्जा कुछ अनोखा संकेत दे रही है।',
+      'हिम्मत मत हारना! हम अपनी मंज़िल के बेहद करीब हैं।',
+      'हमने कर दिखाया। नया सवेरा हमारा इंतज़ार कर रहा है।',
+    ];
+    lineText = hindiLines[sceneIdx % hindiLines.length];
+  } else {
+    const englishLines = [
+      'The journey begins now. We cannot turn back.',
+      'Look closely... the energy signature is shifting.',
+      'Hold your ground! We are almost through!',
+      'We made it. The horizon has never looked clearer.',
+    ];
+    lineText = englishLines[sceneIdx % englishLines.length];
+  }
 
   const wordCount = Math.max(3, lineText.split(/\s+/).length);
   const dur = Math.max(2.0, Math.min(6.5, Math.round(wordCount * 0.42 * 10) / 10));
+
+  // Determine appropriate voiceId based on language and speaker
+  let voiceId = 'narrator';
+  if (language === 'ur') {
+    voiceId = characterName === 'زینب' || characterName === 'Zainab' || characterName === 'Lyra'
+      ? 'ur_hero_female'
+      : (characterName && characterName !== 'راوی' ? 'ur_hero_male' : 'ur_narrator');
+  } else if (language === 'hi') {
+    voiceId = characterName === 'अनन्या' || characterName === 'Ananya' || characterName === 'Lyra'
+      ? 'hi_hero_female'
+      : (characterName && characterName !== 'सूत्रधार' ? 'hi_hero_male' : 'hi_narrator');
+  } else {
+    voiceId = characterName === 'Lyra' ? 'hero_female' : (characterName ? 'hero_male' : 'narrator');
+  }
 
   return [
     {
       id: `diag-${Date.now()}-${sceneIdx}-1`,
       speakerId: characterName ? `char-${characterName.toLowerCase().replace(/[^a-z0-9]/g, '')}` : 'narrator',
-      speakerName: characterName || 'Narrator',
+      speakerName: characterName || (language === 'ur' ? 'راوی' : (language === 'hi' ? 'सूत्रधार' : 'Narrator')),
       text: lineText,
       emotion: sceneIdx === 2 ? 'urgent' : (sceneIdx === 0 ? 'dramatic' : 'neutral'),
       startTime: 0.5,
       duration: dur,
       status: 'ready',
-      voiceId: characterName === 'Lyra' ? 'hero_female' : (characterName ? 'hero_male' : 'narrator'),
+      voiceId,
       speed: 1.0,
       pitch: 1.0,
+      language: language || 'en',
     },
   ];
 }
@@ -476,38 +540,104 @@ export function generateHeuristicStory(
   sceneCount: number,
   totalMovieDuration: number,
   existingCharacters: any[],
-  aspectRatio: string
+  aspectRatio: string,
+  language: string = 'en'
 ) {
   const cleanPrompt = rawPrompt.trim();
   const title = cleanPrompt.length > 36 ? cleanPrompt.slice(0, 32) + '...' : cleanPrompt;
 
-  // Build or preserve consistent character
-  const characters = (existingCharacters && existingCharacters.length > 0) ? existingCharacters : [
-    {
-      id: `char-${Date.now()}-0`,
-      name: 'Kaelen Gray',
-      role: 'Protagonist',
-      visualDescription: 'Mid-30s explorer, chiseled features, cropped silver-streaked dark hair, intense grey eyes',
-      attire: 'High-collar carbon fiber adventurer coat, utilitarian magnetic belts',
-      keyProps: 'Antique compass with luminous blue needle',
-      voiceId: 'hero_male',
-      voiceGender: 'male',
-      voicePitch: 0.95,
-      voiceSpeed: 1.0,
-    },
-    {
-      id: `char-${Date.now()}-1`,
-      name: 'Lyra',
-      role: 'Guide & Companion',
-      visualDescription: 'Athletic build, iridescent braided auburn hair, thoughtful expression',
-      attire: 'Layered hooded dusk cloak with amber luminescence trim',
-      keyProps: 'Brass-ringed optical telescope',
-      voiceId: 'hero_female',
-      voiceGender: 'female',
-      voicePitch: 1.15,
-      voiceSpeed: 1.0,
-    }
-  ];
+  // Build or preserve consistent character based on language
+  let defaultChars: any[] = [];
+  if (language === 'ur') {
+    defaultChars = [
+      {
+        id: `char-${Date.now()}-0`,
+        name: 'طارق (Tariq)',
+        role: 'مرکزی کردار (Protagonist)',
+        visualDescription: 'Late 20s explorer, sharp focused eyes, dark hair, strong determined expression',
+        attire: 'Traditional layered dark sherwani coat with carbon-fiber accents',
+        keyProps: 'Antique compass with glowing blue needle',
+        voiceId: 'ur_hero_male',
+        voiceGender: 'male',
+        voicePitch: 0.95,
+        voiceSpeed: 1.0,
+        preferredLanguage: 'ur',
+      },
+      {
+        id: `char-${Date.now()}-1`,
+        name: 'زینب (Zainab)',
+        role: 'رہنما اور ساتھی (Guide)',
+        visualDescription: 'Athletic, observant amber eyes, braided dark auburn hair',
+        attire: 'Flowing hooded dusk cloak with amber luminescence trim',
+        keyProps: 'Brass-ringed optical telescope',
+        voiceId: 'ur_hero_female',
+        voiceGender: 'female',
+        voicePitch: 1.15,
+        voiceSpeed: 1.0,
+        preferredLanguage: 'ur',
+      },
+    ];
+  } else if (language === 'hi') {
+    defaultChars = [
+      {
+        id: `char-${Date.now()}-0`,
+        name: 'आरव (Aarav)',
+        role: 'नायक (Protagonist)',
+        visualDescription: 'Late 20s bold explorer, sharp focused eyes, dark hair, confident expression',
+        attire: 'Modern cinematic adventurer jacket with golden embroidery accents',
+        keyProps: 'Antique compass with luminous blue needle',
+        voiceId: 'hi_hero_male',
+        voiceGender: 'male',
+        voicePitch: 0.95,
+        voiceSpeed: 1.0,
+        preferredLanguage: 'hi',
+      },
+      {
+        id: `char-${Date.now()}-1`,
+        name: 'अनन्या (Ananya)',
+        role: 'मार्गदर्शक (Guide)',
+        visualDescription: 'Athletic, sharp intelligent eyes, braided dark hair',
+        attire: 'Flowing hooded twilight cloak with amber trim',
+        keyProps: 'Brass-ringed optical telescope',
+        voiceId: 'hi_hero_female',
+        voiceGender: 'female',
+        voicePitch: 1.15,
+        voiceSpeed: 1.0,
+        preferredLanguage: 'hi',
+      },
+    ];
+  } else {
+    defaultChars = [
+      {
+        id: `char-${Date.now()}-0`,
+        name: 'Kaelen Gray',
+        role: 'Protagonist',
+        visualDescription: 'Mid-30s explorer, chiseled features, cropped silver-streaked dark hair, intense grey eyes',
+        attire: 'High-collar carbon fiber adventurer coat, utilitarian magnetic belts',
+        keyProps: 'Antique compass with luminous blue needle',
+        voiceId: 'hero_male',
+        voiceGender: 'male',
+        voicePitch: 0.95,
+        voiceSpeed: 1.0,
+        preferredLanguage: 'en',
+      },
+      {
+        id: `char-${Date.now()}-1`,
+        name: 'Lyra',
+        role: 'Guide & Companion',
+        visualDescription: 'Athletic build, iridescent braided auburn hair, thoughtful expression',
+        attire: 'Layered hooded dusk cloak with amber luminescence trim',
+        keyProps: 'Brass-ringed optical telescope',
+        voiceId: 'hero_female',
+        voiceGender: 'female',
+        voicePitch: 1.15,
+        voiceSpeed: 1.0,
+        preferredLanguage: 'en',
+      },
+    ];
+  }
+
+  const characters = (existingCharacters && existingCharacters.length > 0) ? existingCharacters : defaultChars;
 
   const stylePrefixes: Record<string, string> = {
     cinematic: 'Cinematic 35mm film still, anamorphic lens flare, shallow depth of field, photorealistic, Panavision framing',
@@ -539,54 +669,47 @@ export function generateHeuristicStory(
     'Ethereal bioluminescent ambient glow pulsing gently in low light',
   ];
 
+  // Language-specific scene template texts
   const sceneTemplates = [
     {
-      title: 'The Awakening Catalyst',
-      action: 'The protagonist surveys an extraordinary landscape as an unexpected event begins.',
+      title: language === 'ur' ? 'آغازِ سفر (The Awakening)' : (language === 'hi' ? 'यात्रा का आरंभ (The Awakening)' : 'The Awakening Catalyst'),
+      action: language === 'ur'
+        ? 'کردار ایک وسیع اور پراسرار منظر کا جائزہ لیتا ہے اور ایک غیر متوقع سفر کا آغاز ہوتا ہے۔'
+        : (language === 'hi'
+        ? 'नायक एक विशाल और रहस्यमयी दृश्य का अवलोकन करता है जहां अप्रत्याशित घटना शुरू होती है।'
+        : 'The protagonist surveys an extraordinary landscape as an unexpected event begins.'),
       camera: cameraMoves[0],
       lighting: lightings[0],
     },
     {
-      title: 'The Discovery & Threshold',
-      action: 'Approaching the focal point, confronting the mystery, and making the pivotal decision.',
+      title: language === 'ur' ? 'دریافت اور چیلنج (The Threshold)' : (language === 'hi' ? 'खोज और रहस्य (The Threshold)' : 'The Discovery & Threshold'),
+      action: language === 'ur'
+        ? 'مرکزی مقام کے قریب پہنچ کر اسرار کا سامنا کرنا اور اہم ترین فیصلہ لینا۔'
+        : (language === 'hi'
+        ? 'मुख्य केंद्र के समीप पहुंचकर रहस्य का सामना करना और निर्णायक कदम उठाना।'
+        : 'Approaching the focal point, confronting the mystery, and making the pivotal decision.'),
       camera: cameraMoves[1],
       lighting: lightings[1],
     },
     {
-      title: 'The Rising Surge',
-      action: 'Tension escalates as characters interact with the central anomaly or challenge.',
+      title: language === 'ur' ? 'بحران اور کشمکش (The Conflict)' : (language === 'hi' ? 'संघर्ष की घड़ी (The Conflict)' : 'The Rising Surge'),
+      action: language === 'ur'
+        ? 'تناؤ میں اضافہ ہوتا ہے جب کردار مرکزی رکاوٹ کا بہادری سے مقابلہ کرتے ہیں۔'
+        : (language === 'hi'
+        ? 'तनाव बढ़ता है जब पात्र केंद्रीय चुनौती का डटकर सामना करते हैं।'
+        : 'Tension escalates as characters interact with the central anomaly or challenge.'),
       camera: cameraMoves[2],
       lighting: lightings[2],
     },
     {
-      title: 'The Climax Sequence',
-      action: 'A peak visual spectacle where all elements converge in dramatic motion.',
+      title: language === 'ur' ? 'انجام اور فتح (The Resolution)' : (language === 'hi' ? 'विजय और नई सुबह (The Resolution)' : 'The Climax Sequence'),
+      action: language === 'ur'
+        ? 'ایک شاندار اختتام جہاں تمام رکاوٹیں دور ہو جاتی ہیں اور نیا افق طلوع ہوتا ہے۔'
+        : (language === 'hi'
+        ? 'एक भव्य समापन जहां सभी बाधाएं दूर होती हैं और एक नया सवेरा सामने आता है।'
+        : 'A peak visual spectacle where all elements converge in dramatic motion.'),
       camera: cameraMoves[3],
       lighting: lightings[3],
-    },
-    {
-      title: 'The Reversal & Revelation',
-      action: 'An unexpected truth or breathtaking transformation changes the perspective.',
-      camera: cameraMoves[4],
-      lighting: lightings[4],
-    },
-    {
-      title: 'The Aftermath & Horizon',
-      action: 'The dust settles as the camera pulls back, revealing the transformed world into the future.',
-      camera: cameraMoves[5],
-      lighting: lightings[5],
-    },
-    {
-      title: 'The Journey Continues',
-      action: 'Characters set out towards a new horizon with renewed resolve.',
-      camera: cameraMoves[6],
-      lighting: lightings[0],
-    },
-    {
-      title: 'Grand Finale Resolution',
-      action: 'A lingering cinematic tableau that leaves a haunting, beautiful impression.',
-      camera: cameraMoves[7],
-      lighting: lightings[1],
     },
   ];
 
@@ -594,18 +717,21 @@ export function generateHeuristicStory(
   const selectedScenes = Array.from({ length: sceneCount }, (_, idx) => {
     const tmpl = sceneTemplates[idx % sceneTemplates.length];
     const cycle = Math.floor(idx / sceneTemplates.length);
-    const sceneTitle = cycle > 0 ? `${tmpl.title} (Part ${cycle + 1})` : tmpl.title;
+    const sceneTitle = cycle > 0 ? `${tmpl.title} (${cycle + 1})` : tmpl.title;
     const cameraMove = cameraMoves[idx % cameraMoves.length];
     const lightingSetup = lightings[idx % lightings.length];
     const speakingChar = characters[idx % characters.length];
     const charDesc = characters[0] ? `Featuring ${characters[0].name} (${characters[0].visualDescription}, wearing ${characters[0].attire})` : '';
+    
+    // Notice: visualPrompt is kept in detailed English for diffusion models (Wan 2.1)
     const visualPrompt = `${styleTag}. Scene ${idx + 1} - ${sceneTitle}: ${cleanPrompt}. ${charDesc}. Action: ${tmpl.action}. Camera: ${cameraMove}. Lighting: ${lightingSetup}. Aspect Ratio ${aspectRatio}. 4K crisp render, temporal video consistency.`;
 
     const dialogueLines = detectSceneDialogue(
-      idx === 1 ? 'Look... it is finally beginning.' : '',
+      '',
       tmpl.action,
       speakingChar.name,
-      idx
+      idx,
+      language
     );
     const soundEffects = detectSceneSoundEffects(tmpl.action, cleanPrompt, idx);
     const sceneMusicMood = detectSceneMusicMood('Cinematic Journey', tmpl.action);
@@ -637,6 +763,7 @@ export function generateHeuristicStory(
     totalDuration: totalMovieDuration,
     characters,
     scenes: selectedScenes,
+    language: language || 'en',
     audioSettings: {
       masterVolume: 1.0,
       voiceVolume: 1.0,
@@ -645,8 +772,15 @@ export function generateHeuristicStory(
       globalMusicMood,
       autoDucking: true,
       duckingPercent: 75,
-      language: 'en-US',
+      language: language || 'en',
       ttsEngine: 'browser_speech',
+      subtitleSettings: {
+        enabled: true,
+        language: 'same_as_audio',
+        fontSize: 'base',
+        showSpeakerName: true,
+        rtlMode: language === 'ur',
+      },
     },
     musicTrack: {
       mood: globalMusicMood,
