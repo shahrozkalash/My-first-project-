@@ -1,4 +1,5 @@
 @echo off
+cd /d "%~dp0"
 echo ===================================================================
 echo   StoryMotion AI - Zero-Cost Local WAN 2.1 Video Server (Windows 11)
 echo ===================================================================

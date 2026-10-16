@@ -100,11 +100,18 @@ export interface VideoEngineHealth {
   provider?: string;
   engineUrlDisplay: string;
   model: string;
+  hardware?: {
+    gpu_name?: string;
+    vram_total_gb?: number;
+    vram_free_gb?: number;
+    recommended_model?: string;
+  };
   supportedModels: string[];
   supportedResolutions: string[];
   supportedAspectRatios: string[];
   message: string;
   lastChecked: string;
+  zeroCostGuaranteed?: boolean;
 }
 
 export interface VideoEngineJobStatus {
