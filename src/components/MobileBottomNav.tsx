@@ -34,11 +34,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   };
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-lg border-t border-zinc-800/80 px-2 py-1.5 flex items-center justify-around safe-area-bottom">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-lg border-t border-zinc-800/80 px-2 py-1 flex items-center justify-around safe-area-bottom">
       {/* 1. Prompt & Story */}
       <button
         onClick={() => handleNav('studio', 'prompt')}
-        className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-lg transition-all ${
+        className={`flex flex-col items-center justify-center min-h-[48px] py-1 px-2.5 rounded-lg transition-all active:scale-95 ${
           currentTab === 'studio' && studioSection === 'prompt'
             ? 'text-purple-400 font-semibold'
             : 'text-zinc-400 hover:text-zinc-200'
@@ -51,7 +51,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       {/* 2. Consistent Characters */}
       <button
         onClick={() => handleNav('studio', 'characters')}
-        className={`relative flex flex-col items-center justify-center py-1 px-2.5 rounded-lg transition-all ${
+        className={`relative flex flex-col items-center justify-center min-h-[48px] py-1 px-2.5 rounded-lg transition-all active:scale-95 ${
           currentTab === 'studio' && studioSection === 'characters'
             ? 'text-purple-400 font-semibold'
             : 'text-zinc-400 hover:text-zinc-200'
@@ -60,7 +60,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <Users className="w-4 h-4 mb-0.5" />
         <span className="text-[10px]">Characters</span>
         {characterCount > 0 && (
-          <span className="absolute top-0.5 right-2 w-3.5 h-3.5 bg-purple-600 text-[9px] font-bold text-white rounded-full flex items-center justify-center">
+          <span className="absolute top-1 right-2 w-3.5 h-3.5 bg-purple-600 text-[9px] font-bold text-white rounded-full flex items-center justify-center">
             {characterCount}
           </span>
         )}
@@ -69,7 +69,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       {/* 3. Sequential Scenes */}
       <button
         onClick={() => handleNav('studio', 'scenes')}
-        className={`relative flex flex-col items-center justify-center py-1 px-2.5 rounded-lg transition-all ${
+        className={`relative flex flex-col items-center justify-center min-h-[48px] py-1 px-2.5 rounded-lg transition-all active:scale-95 ${
           currentTab === 'studio' && studioSection === 'scenes'
             ? 'text-purple-400 font-semibold'
             : 'text-zinc-400 hover:text-zinc-200'
@@ -78,7 +78,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <Clapperboard className="w-4 h-4 mb-0.5" />
         <span className="text-[10px]">Scenes</span>
         {sceneCount > 0 && (
-          <span className="absolute top-0.5 right-2 w-3.5 h-3.5 bg-blue-600 text-[9px] font-bold text-white rounded-full flex items-center justify-center">
+          <span className="absolute top-1 right-2 w-3.5 h-3.5 bg-blue-600 text-[9px] font-bold text-white rounded-full flex items-center justify-center">
             {sceneCount}
           </span>
         )}
@@ -87,7 +87,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       {/* 4. Preview Viewport */}
       <button
         onClick={() => handleNav('studio', 'preview')}
-        className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-lg transition-all ${
+        className={`flex flex-col items-center justify-center min-h-[48px] py-1 px-2.5 rounded-lg transition-all active:scale-95 ${
           currentTab === 'studio' && studioSection === 'preview'
             ? 'text-purple-400 font-semibold'
             : 'text-zinc-400 hover:text-zinc-200'
@@ -100,7 +100,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       {/* 5. Projects Library */}
       <button
         onClick={() => handleNav('projects')}
-        className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-lg transition-all ${
+        className={`flex flex-col items-center justify-center min-h-[48px] py-1 px-2.5 rounded-lg transition-all active:scale-95 ${
           currentTab === 'projects'
             ? 'text-purple-400 font-semibold'
             : 'text-zinc-400 hover:text-zinc-200'

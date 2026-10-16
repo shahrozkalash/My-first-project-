@@ -140,8 +140,8 @@ app.post('/api/story/generate', async (req, res) => {
       return res.status(400).json({ error: 'Prompt is required' });
     }
 
-    const totalMovieDuration = Math.max(10, Number(totalDuration) || 60);
-    const sceneCount = Math.max(2, Math.min(8, Number(numScenes) || 4));
+    const totalMovieDuration = Math.max(5, Math.min(7200, Number(totalDuration) || 60));
+    const sceneCount = Math.max(2, Math.min(32, Number(numScenes) || 4));
     const distributedDurations = distributeServerDuration(totalMovieDuration, sceneCount);
     const avgDuration = Math.round(totalMovieDuration / sceneCount);
 
@@ -404,22 +404,27 @@ function generateHeuristicStory(
   ];
 
   const distributedDurations = distributeServerDuration(totalMovieDuration, sceneCount);
-  const selectedScenes = sceneTemplates.slice(0, sceneCount).map((tmpl, idx) => {
+  const selectedScenes = Array.from({ length: sceneCount }, (_, idx) => {
+    const tmpl = sceneTemplates[idx % sceneTemplates.length];
+    const cycle = Math.floor(idx / sceneTemplates.length);
+    const sceneTitle = cycle > 0 ? `${tmpl.title} (Part ${cycle + 1})` : tmpl.title;
+    const cameraMove = cameraMoves[idx % cameraMoves.length];
+    const lightingSetup = lightings[idx % lightings.length];
     const charDesc = characters[0] ? `Featuring ${characters[0].name} (${characters[0].visualDescription}, wearing ${characters[0].attire})` : '';
-    const visualPrompt = `${styleTag}. ${tmpl.title}: ${cleanPrompt}. ${charDesc}. Action: ${tmpl.action}. Camera: ${tmpl.camera}. Lighting: ${tmpl.lighting}. Aspect Ratio ${aspectRatio}. 4K crisp render, temporal video consistency.`;
+    const visualPrompt = `${styleTag}. Scene ${idx + 1} - ${sceneTitle}: ${cleanPrompt}. ${charDesc}. Action: ${tmpl.action}. Camera: ${cameraMove}. Lighting: ${lightingSetup}. Aspect Ratio ${aspectRatio}. 4K crisp render, temporal video consistency.`;
 
     return {
       id: `scene-${Date.now()}-${idx}`,
       sceneNumber: idx + 1,
-      title: tmpl.title,
+      title: sceneTitle,
       visualPrompt,
       actionSummary: tmpl.action,
       dialogue: idx === 1 ? 'Look... it is finally beginning.' : '',
-      cameraMovement: tmpl.camera,
-      lighting: tmpl.lighting,
-      duration: distributedDurations[idx] || Math.round(totalMovieDuration / sceneCount),
+      cameraMovement: cameraMove,
+      lighting: lightingSetup,
+      duration: distributedDurations[idx] || Math.max(1, Math.round(totalMovieDuration / sceneCount)),
       characterIds: characters.map((c) => c.name),
-      status: 'ready',
+      status: 'ready' as const,
     };
   });
 

@@ -1,7 +1,20 @@
 import { Scene } from '../types';
 
 export const DEFAULT_TOTAL_DURATION = 60; // Exactly 60 seconds by default
-export const DURATION_PRESETS = [30, 45, 60, 90, 120];
+
+export interface DurationPreset {
+  seconds: number;
+  label: string;
+  tag?: string;
+}
+
+export const DURATION_PRESETS: DurationPreset[] = [
+  { seconds: 60, label: '60s (1m)', tag: 'Default' },
+  { seconds: 180, label: '3 min' },
+  { seconds: 300, label: '5 min' },
+  { seconds: 600, label: '10 min', tag: 'Cinema' },
+  { seconds: 1800, label: '30 min', tag: 'Feature' },
+];
 
 /**
  * Distributes a total duration (in seconds) across numScenes evenly.
@@ -151,12 +164,32 @@ export function recalculateSceneDurations(
 }
 
 /**
- * Format duration in mm:ss or s
+ * Format duration in human readable format (e.g. 5s, 60s, 10m 00s, 30m)
  */
 export function formatDuration(seconds: number): string {
   const s = Math.max(0, Math.round(seconds));
+  if (s < 60) return `${s}s`;
   const mins = Math.floor(s / 60);
   const remainingSecs = s % 60;
-  if (mins === 0) return `${remainingSecs}s`;
-  return `${mins}:${remainingSecs < 10 ? '0' : ''}${remainingSecs}`;
+  if (mins >= 60) {
+    const hours = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    return `${hours}h ${remMins > 0 ? `${remMins}m` : ''}`.trim();
+  }
+  return `${mins}m ${remainingSecs > 0 ? `${remainingSecs}s` : ''}`.trim();
+}
+
+/**
+ * Format timecode in mm:ss or hh:mm:ss for media players and scrubbers
+ */
+export function formatTimecode(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds));
+  const mins = Math.floor(s / 60);
+  const remainingSecs = s % 60;
+  if (mins >= 60) {
+    const hours = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    return `${hours}:${remMins < 10 ? '0' : ''}${remMins}:${remainingSecs < 10 ? '0' : ''}${remainingSecs}`;
+  }
+  return `${mins < 10 ? '0' : ''}${mins}:${remainingSecs < 10 ? '0' : ''}${remainingSecs}`;
 }

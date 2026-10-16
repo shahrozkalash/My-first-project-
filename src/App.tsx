@@ -49,6 +49,8 @@ export default function App() {
   const [isGeneratingStory, setIsGeneratingStory] = useState(false);
   const [generationStepMessage, setGenerationStepMessage] = useState('');
   const [enhancingSceneId, setEnhancingSceneId] = useState<string | null>(null);
+  const [renderingSceneId, setRenderingSceneId] = useState<string | null>(null);
+  const [isRenderingAll, setIsRenderingAll] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Modals
@@ -256,6 +258,65 @@ export default function App() {
     } finally {
       setEnhancingSceneId(null);
     }
+  };
+
+  // Render Individual Scene with Wan Engine
+  const handleRenderSingleScene = async (scene: Scene) => {
+    setRenderingSceneId(scene.id);
+    try {
+      const res = await fetch('/api/video/engine/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sceneId: scene.id,
+          sceneNumber: scene.sceneNumber,
+          prompt: scene.visualPrompt,
+          aspectRatio: currentProject.aspectRatio,
+          duration: scene.duration,
+          resolution: currentProject.aspectRatio === '9:16' ? '720x1280' : '1280x720',
+          characterConsistencyTags: currentProject.characters.map((c) => c.name),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        if (data.error === 'ENGINE_NOT_CONFIGURED') {
+          showToast('Wan Engine is not configured. Set WAN_ENGINE_URL in .env to connect your inference server.', 'info');
+        } else {
+          showToast(data.message || 'Video engine failed to generate shot', 'error');
+        }
+        return;
+      }
+
+      showToast(`Shot ${scene.sceneNumber} submitted to Wan Engine!`, 'success');
+      const updatedScenes = currentProject.scenes.map((s) =>
+        s.id === scene.id
+          ? {
+              ...s,
+              status: 'queued' as const,
+              engineJobId: data.jobId,
+              engineProgress: 10,
+            }
+          : s
+      );
+      updateProject({ ...currentProject, scenes: updatedScenes });
+    } catch (e: any) {
+      showToast(`Error connecting to video engine: ${e.message}`, 'error');
+    } finally {
+      setRenderingSceneId(null);
+    }
+  };
+
+  // Batch render all scenes
+  const handleRenderAllScenes = async () => {
+    if (currentProject.scenes.length === 0) return;
+    setIsRenderingAll(true);
+    showToast('Starting sequential batch rendering of all scenes...', 'info');
+
+    for (const scene of currentProject.scenes) {
+      await handleRenderSingleScene(scene);
+    }
+    setIsRenderingAll(false);
   };
 
   // Character Management
@@ -578,10 +639,10 @@ export default function App() {
                     setStyle={(s) => updateProject({ ...currentProject, style: s })}
                     aspectRatio={currentProject.aspectRatio}
                     setAspectRatio={(ar) => updateProject({ ...currentProject, aspectRatio: ar })}
-                    sceneDuration={currentProject.sceneDuration}
-                    setSceneDuration={(d) => updateProject({ ...currentProject, sceneDuration: d })}
+                    totalDuration={currentProject.totalDuration || DEFAULT_TOTAL_DURATION}
+                    setTotalDuration={handleTotalDurationChange}
                     numScenes={currentProject.numScenes}
-                    setNumScenes={(n) => updateProject({ ...currentProject, numScenes: n })}
+                    setNumScenes={handleNumScenesChange}
                     characters={currentProject.characters}
                     isGenerating={isGeneratingStory}
                     onGenerateStory={handleGenerateStory}
@@ -608,7 +669,10 @@ export default function App() {
                   <SceneList
                     scenes={currentProject.scenes}
                     characters={currentProject.characters}
+                    totalDuration={currentProject.totalDuration || DEFAULT_TOTAL_DURATION}
                     onUpdateScene={handleUpdateScene}
+                    onSceneDurationChange={handleSceneDurationChange}
+                    onRedistributeEvenly={handleRedistributeEvenly}
                     onAddScene={handleAddScene}
                     onDeleteScene={handleDeleteScene}
                     onDuplicateScene={handleDuplicateScene}
@@ -621,6 +685,10 @@ export default function App() {
                       if (window.innerWidth < 768) setMobileSection('preview');
                     }}
                     selectedSceneId={currentProject.scenes[selectedSceneIndex]?.id}
+                    onRenderScene={handleRenderSingleScene}
+                    renderingSceneId={renderingSceneId}
+                    onRenderAllScenes={handleRenderAllScenes}
+                    isRenderingAll={isRenderingAll}
                   />
                 </div>
               </div>

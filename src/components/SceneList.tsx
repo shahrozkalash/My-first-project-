@@ -17,9 +17,14 @@ import {
   ChevronUp,
   Film,
   Check,
+  Zap,
+  Play,
+  CheckCircle2,
+  Video,
 } from 'lucide-react';
 import { CAMERA_MOVEMENTS, LIGHTING_MOODS } from '../data/constants';
 import { Character, Scene, CameraMovement, LightingMood } from '../types';
+import { formatDuration } from '../utils/duration';
 
 interface SceneListProps {
   scenes: Scene[];
@@ -36,6 +41,10 @@ interface SceneListProps {
   enhancingSceneId?: string | null;
   onSelectSceneForPreview?: (scene: Scene) => void;
   selectedSceneId?: string | null;
+  onRenderScene?: (scene: Scene) => void;
+  renderingSceneId?: string | null;
+  onRenderAllScenes?: () => void;
+  isRenderingAll?: boolean;
 }
 
 export const SceneList: React.FC<SceneListProps> = ({
@@ -53,6 +62,10 @@ export const SceneList: React.FC<SceneListProps> = ({
   enhancingSceneId,
   onSelectSceneForPreview,
   selectedSceneId,
+  onRenderScene,
+  renderingSceneId,
+  onRenderAllScenes,
+  isRenderingAll,
 }) => {
   const [expandedScenes, setExpandedScenes] = useState<Record<string, boolean>>({});
 
@@ -102,13 +115,38 @@ export const SceneList: React.FC<SceneListProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {scenes.length > 0 && onRenderAllScenes && (
+            <button
+              type="button"
+              disabled={isRenderingAll}
+              onClick={onRenderAllScenes}
+              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all shadow-md active:scale-95 ${
+                isRenderingAll
+                  ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed border border-zinc-700'
+                  : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-purple-600/30'
+              }`}
+            >
+              {isRenderingAll ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+                  <span>Batch Rendering...</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-3.5 h-3.5 text-purple-200" />
+                  <span>Render All Shots</span>
+                </>
+              )}
+            </button>
+          )}
+
           {scenes.length > 0 && onRedistributeEvenly && (
             <button
               type="button"
               onClick={onRedistributeEvenly}
               className="text-xs font-medium text-purple-300 hover:text-white bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 px-2.5 py-1.5 rounded-xl transition-all"
-              title="Evenly distribute 60s total across all scenes"
+              title="Evenly distribute total runtime across all scenes"
             >
               Split Evenly (~{Math.round(totalDuration / scenes.length)}s/shot)
             </button>
@@ -133,12 +171,17 @@ export const SceneList: React.FC<SceneListProps> = ({
             <span className="text-zinc-300 font-medium">
               Total Movie Runtime:
             </span>
-            <span className="px-2 py-0.5 rounded-md font-bold text-white bg-purple-600/30 border border-purple-500/40">
-              {currentTotalDuration}s {currentTotalDuration === 60 ? '(Default 60s)' : `(Target: ${totalDuration}s)`}
+            <span className="px-2 py-0.5 rounded-md font-bold text-white bg-purple-600/30 border border-purple-500/40 font-mono">
+              {formatDuration(currentTotalDuration)} ({currentTotalDuration}s)
+              {currentTotalDuration !== totalDuration && ` / Target: ${formatDuration(totalDuration)}`}
             </span>
           </div>
-          <div className="text-[11px] text-zinc-400">
-            {scenes.length} scenes totaling exactly {currentTotalDuration}s (auto-balanced)
+          <div className="text-[11px] text-zinc-400 flex items-center gap-2">
+            <span>{scenes.length} scenes totaling {formatDuration(currentTotalDuration)}</span>
+            <span className="text-zinc-600">•</span>
+            <span className="text-emerald-400 font-medium">
+              {scenes.filter((s) => Boolean(s.videoUrl)).length}/{scenes.length} clips rendered
+            </span>
           </div>
         </div>
       )}
@@ -193,10 +236,43 @@ export const SceneList: React.FC<SceneListProps> = ({
                       <Clock className="w-3 h-3 text-purple-400" />
                       <span>{scene.duration}s</span>
                     </span>
+
+                    {scene.videoUrl && (
+                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Clip Ready</span>
+                      </span>
+                    )}
+
+                    {renderingSceneId === scene.id && (
+                      <span className="text-[10px] font-bold text-purple-300 bg-purple-950/60 border border-purple-500/40 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                        <div className="w-2.5 h-2.5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+                        <span>Rendering...</span>
+                      </span>
+                    )}
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {onRenderScene && (
+                      <button
+                        type="button"
+                        disabled={renderingSceneId === scene.id}
+                        onClick={() => onRenderScene(scene)}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all ${
+                          renderingSceneId === scene.id
+                            ? 'bg-zinc-800 text-zinc-500 border-zinc-700 cursor-not-allowed'
+                            : scene.videoUrl
+                            ? 'bg-emerald-950/30 text-emerald-300 border-emerald-500/30 hover:bg-emerald-900/40'
+                            : 'bg-purple-600/20 text-purple-300 border-purple-500/40 hover:bg-purple-600 hover:text-white'
+                        }`}
+                        title="Render scene with Wan video engine"
+                      >
+                        <Zap className="w-3 h-3 text-purple-300" />
+                        <span>{scene.videoUrl ? 'Re-render' : 'Render Shot'}</span>
+                      </button>
+                    )}
+
                     {onSelectSceneForPreview && (
                       <button
                         type="button"
@@ -409,9 +485,9 @@ export const SceneList: React.FC<SceneListProps> = ({
                             </button>
                           </div>
 
-                          {/* Quick duration shortcuts */}
-                          <div className="flex items-center gap-1">
-                            {[10, 15, 20].map((dur) => (
+                          {/* Quick duration shortcuts including 5-second scenes */}
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {[5, 10, 15, 20, 30].map((dur) => (
                               <button
                                 key={dur}
                                 type="button"
@@ -424,11 +500,11 @@ export const SceneList: React.FC<SceneListProps> = ({
                                 }}
                                 className={`px-2 py-1 text-[10px] rounded-md font-medium border transition-colors ${
                                   scene.duration === dur
-                                    ? 'bg-purple-600 text-white border-purple-500'
+                                    ? 'bg-purple-600 text-white border-purple-500 font-bold'
                                     : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'
                                 }`}
                               >
-                                {dur}s
+                                {dur}s{dur === 5 ? ' ⚡' : ''}
                               </button>
                             ))}
                           </div>

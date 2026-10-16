@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { VISUAL_STYLES, PROMPT_INSPIRATIONS } from '../data/constants';
 import { AspectRatio, VisualStyle, Character } from '../types';
+import { formatDuration, DURATION_PRESETS } from '../utils/duration';
 
 interface StoryPromptInputProps {
   prompt: string;
@@ -53,6 +54,7 @@ export const StoryPromptInput: React.FC<StoryPromptInputProps> = ({
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [showInspirations, setShowInspirations] = useState(false);
+  const [showCustomDurationInput, setShowCustomDurationInput] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -244,82 +246,136 @@ export const StoryPromptInput: React.FC<StoryPromptInputProps> = ({
             </div>
           </div>
 
-          {/* Total Movie Duration (Default 60s) */}
-          <div className="bg-zinc-900/70 border border-zinc-800/80 rounded-xl p-3 space-y-1.5">
+          {/* Total Movie Duration (Default 60s, 10m, 30m) */}
+          <div className="bg-zinc-900/70 border border-zinc-800/80 rounded-xl p-3 space-y-2">
             <div className="flex items-center justify-between text-xs font-semibold text-zinc-300">
               <div className="flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-purple-400" />
                 <span>Total Movie Duration</span>
               </div>
-              <span className="text-purple-400 font-bold bg-purple-500/10 border border-purple-500/30 px-1.5 py-0.5 rounded text-[11px]">
-                {totalDuration}s total {totalDuration === 60 ? '(Default)' : ''}
+              <span className="text-purple-400 font-bold bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 rounded text-[11px]">
+                {formatDuration(totalDuration)} ({totalDuration}s)
               </span>
             </div>
-            <div className="grid grid-cols-5 gap-1">
-              {[30, 45, 60, 90, 120].map((dur) => (
-                <button
-                  key={dur}
-                  type="button"
-                  onClick={() => setTotalDuration(dur)}
-                  disabled={isGenerating}
-                  className={`py-1.5 text-[11px] font-medium rounded-lg border text-center transition-all relative ${
-                    totalDuration === dur
-                      ? 'bg-purple-600 text-white border-purple-500 shadow-sm shadow-purple-600/30 font-bold'
-                      : 'bg-zinc-950/80 text-zinc-400 border-zinc-800 hover:text-zinc-200'
-                  }`}
-                >
-                  {dur}s
-                  {dur === 60 && (
-                    <span className="absolute -top-1.5 -right-1 text-[8px] bg-amber-500 text-black px-1 rounded-full font-black leading-tight">
-                      ★
-                    </span>
-                  )}
-                </button>
-              ))}
+
+            {/* Presets Grid */}
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+              {DURATION_PRESETS.map((preset) => {
+                const isSelected = totalDuration === preset.seconds;
+                return (
+                  <button
+                    key={preset.seconds}
+                    type="button"
+                    onClick={() => {
+                      setTotalDuration(preset.seconds);
+                      setShowCustomDurationInput(false);
+                    }}
+                    disabled={isGenerating}
+                    className={`py-2 px-1 text-[11px] font-medium rounded-lg border text-center transition-all relative ${
+                      isSelected
+                        ? 'bg-purple-600 text-white border-purple-500 shadow-sm shadow-purple-600/30 font-bold ring-1 ring-purple-400'
+                        : 'bg-zinc-950/80 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:border-zinc-700'
+                    }`}
+                  >
+                    <div>{preset.label}</div>
+                    {preset.tag && (
+                      <span className={`text-[8px] uppercase tracking-wider block font-semibold ${
+                        isSelected ? 'text-purple-200' : 'text-zinc-500'
+                      }`}>
+                        {preset.tag}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
-            <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-0.5">
-              <span>Distributed across all scenes</span>
-              <span className="text-purple-300 font-semibold">
-                ~{Math.round(totalDuration / numScenes)}s / shot
+
+            {/* Custom Duration Toggle & Input */}
+            <div className="flex items-center justify-between text-[11px] pt-1 border-t border-zinc-800/60">
+              <button
+                type="button"
+                onClick={() => setShowCustomDurationInput(!showCustomDurationInput)}
+                className="text-purple-400 hover:text-purple-300 flex items-center gap-1 font-medium transition-colors"
+              >
+                <span>{showCustomDurationInput ? 'Hide Custom Duration' : 'Custom Duration (seconds / min)'}</span>
+              </button>
+
+              <span className="text-zinc-400">
+                Pacing: <strong className="text-purple-300">~{Math.max(1, Math.round(totalDuration / numScenes))}s / scene</strong>
               </span>
             </div>
+
+            {showCustomDurationInput && (
+              <div className="flex items-center gap-2 p-2 bg-zinc-950/90 border border-purple-500/30 rounded-lg animate-in fade-in">
+                <span className="text-[11px] text-zinc-400">Set exact total seconds:</span>
+                <input
+                  type="number"
+                  min={5}
+                  max={7200}
+                  value={totalDuration}
+                  onChange={(e) => setTotalDuration(Math.max(5, Math.min(7200, Number(e.target.value) || 60)))}
+                  className="w-24 bg-zinc-900 border border-zinc-700 text-white px-2 py-1 rounded text-xs text-center font-mono focus:outline-none focus:border-purple-500"
+                />
+                <span className="text-[11px] text-zinc-400">sec ({formatDuration(totalDuration)})</span>
+              </div>
+            )}
           </div>
 
-          {/* Number of Scenes */}
-          <div className="bg-zinc-900/70 border border-zinc-800/80 rounded-xl p-3 space-y-1.5">
+          {/* Number of Scenes & Pacing */}
+          <div className="bg-zinc-900/70 border border-zinc-800/80 rounded-xl p-3 space-y-2">
             <div className="flex items-center justify-between text-xs font-semibold text-zinc-300">
               <div className="flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Number of Scenes</span>
+                <span>Scenes & Pacing</span>
               </div>
               <span className="text-indigo-400 font-bold">{numScenes} scenes</span>
             </div>
-            <div className="grid grid-cols-6 gap-1">
-              {[2, 3, 4, 5, 6, 8].map((count) => (
-                <button
-                  key={count}
-                  type="button"
-                  onClick={() => setNumScenes(count)}
-                  disabled={isGenerating}
-                  className={`py-1.5 text-xs font-medium rounded-lg border text-center transition-all ${
-                    numScenes === count
-                      ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm shadow-indigo-600/30'
-                      : 'bg-zinc-950/80 text-zinc-400 border-zinc-800 hover:text-zinc-200'
-                  }`}
-                >
-                  {count}
-                </button>
-              ))}
+
+            <div className="grid grid-cols-4 sm:grid-cols-7 gap-1">
+              {[2, 4, 6, 8, 12, 16, 24].map((count) => {
+                const isSelected = numScenes === count;
+                const avgShot = Math.round(totalDuration / count);
+                const isFiveSec = avgShot === 5;
+
+                return (
+                  <button
+                    key={count}
+                    type="button"
+                    onClick={() => setNumScenes(count)}
+                    disabled={isGenerating}
+                    className={`py-1.5 text-xs font-medium rounded-lg border text-center transition-all relative ${
+                      isSelected
+                        ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm shadow-indigo-600/30 ring-1 ring-indigo-400'
+                        : 'bg-zinc-950/80 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:border-zinc-700'
+                    }`}
+                  >
+                    <span>{count}</span>
+                    {isFiveSec && (
+                      <span className="block text-[8px] text-amber-300 font-bold">5s/shot</span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
-            <div className="text-[10px] text-zinc-400 pt-0.5">
-              <span>{totalDuration}s total ÷ {numScenes} = </span>
-              <strong className="text-indigo-300">
-                {numScenes === 4 && totalDuration === 60
-                  ? '4 scenes × 15s'
-                  : numScenes === 6 && totalDuration === 60
-                  ? '6 scenes × 10s'
-                  : `~${(totalDuration / numScenes).toFixed(totalDuration % numScenes === 0 ? 0 : 1)}s per scene`}
-              </strong>
+
+            {/* Quick 5-second scene shortcut if available */}
+            <div className="flex items-center justify-between text-[11px] text-zinc-400 pt-1 border-t border-zinc-800/60 flex-wrap gap-1">
+              <div className="flex items-center gap-1.5">
+                <span>{formatDuration(totalDuration)} ÷ {numScenes} =</span>
+                <strong className="text-indigo-300">
+                  ~{(totalDuration / numScenes).toFixed(totalDuration % numScenes === 0 ? 0 : 1)}s per scene
+                </strong>
+              </div>
+
+              {totalDuration === 60 && numScenes !== 12 && (
+                <button
+                  type="button"
+                  onClick={() => setNumScenes(12)}
+                  className="text-[10px] text-amber-400 hover:text-amber-300 underline font-semibold"
+                >
+                  ⚡ Set 12 shots (5s each)
+                </button>
+              )}
             </div>
           </div>
         </div>

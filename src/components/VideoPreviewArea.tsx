@@ -25,6 +25,7 @@ import {
   generateVeoApiPayload,
   generateWanApiPayload,
 } from '../utils/storage';
+import { formatDuration, formatTimecode } from '../utils/duration';
 
 interface VideoPreviewAreaProps {
   project: Project;
@@ -56,7 +57,10 @@ export const VideoPreviewArea: React.FC<VideoPreviewAreaProps> = ({
   const [engineError, setEngineError] = useState<string | null>(null);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
 
+  const [payloadCopied, setPayloadCopied] = useState(false);
+
   const scenes = project.scenes;
+  const activeScene = scenes[currentSceneIndex] || scenes[0] || null;
   const totalDuration = scenes.length > 0
     ? scenes.reduce((acc, s) => acc + (Number(s.duration) || 0), 0)
     : (Number(project.totalDuration) || 60);
@@ -230,6 +234,9 @@ export const VideoPreviewArea: React.FC<VideoPreviewAreaProps> = ({
     if (file) {
       const url = URL.createObjectURL(file);
       setTestVideoUrl(url);
+      if (onSceneVideoReady && activeScene) {
+        onSceneVideoReady(activeScene.id, url);
+      }
     }
   };
 
@@ -257,8 +264,8 @@ export const VideoPreviewArea: React.FC<VideoPreviewAreaProps> = ({
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
                 {project.aspectRatio === '16:9' ? '16:9 Landscape' : '9:16 Portrait'}
               </span>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-900/60 text-purple-300 border border-purple-500/40">
-                {totalDuration}s Total Movie
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-900/60 text-purple-300 border border-purple-500/40 font-mono">
+                {formatDuration(totalDuration)} ({totalDuration}s)
               </span>
             </h3>
             <p className="text-xs text-zinc-400">
@@ -471,7 +478,7 @@ export const VideoPreviewArea: React.FC<VideoPreviewAreaProps> = ({
                   </span>
                   <span className="text-zinc-500">|</span>
                   <span className="text-purple-300">
-                    {currentTime.toFixed(1)}s / {totalDuration}s
+                    {formatTimecode(currentTime)} / {formatTimecode(totalDuration)}
                   </span>
                 </div>
               </div>
@@ -554,11 +561,11 @@ export const VideoPreviewArea: React.FC<VideoPreviewAreaProps> = ({
               </button>
 
               <span className="font-mono text-xs text-zinc-300 ml-1">
-                {currentTime.toFixed(1)}s / {totalDuration}s
+                {formatTimecode(currentTime)} / {formatTimecode(totalDuration)}
               </span>
             </div>
 
-            {/* Scene chips */}
+            {/* Scene chips with clip readiness indicator */}
             <div className="flex items-center gap-1 overflow-x-auto max-w-full py-1">
               {scenes.map((s, idx) => (
                 <button
@@ -572,13 +579,17 @@ export const VideoPreviewArea: React.FC<VideoPreviewAreaProps> = ({
                     }
                     setCurrentTime(start);
                   }}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all shrink-0 border ${
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all shrink-0 border flex items-center gap-1.5 ${
                     currentSceneIndex === idx
                       ? 'bg-blue-600 text-white border-blue-500 shadow-sm shadow-blue-600/30'
                       : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200'
                   }`}
                 >
-                  Shot {s.sceneNumber} ({s.duration}s)
+                  {s.videoUrl && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" title="Clip ready" />
+                  )}
+                  <span>Shot {s.sceneNumber}</span>
+                  <span className="text-[10px] opacity-75 font-mono">({s.duration}s)</span>
                 </button>
               ))}
             </div>
@@ -693,19 +704,29 @@ export const VideoPreviewArea: React.FC<VideoPreviewAreaProps> = ({
 
             <div className="flex items-center justify-between gap-2 pt-2">
               <button
+                type="button"
                 onClick={() => {
                   const data =
                     payloadType === 'wan'
                       ? generateWanApiPayload(project, activeScene)
                       : generateVeoApiPayload(project, activeScene);
                   navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-                  alert('Payload copied to clipboard!');
+                  setPayloadCopied(true);
+                  setTimeout(() => setPayloadCopied(false), 2000);
                 }}
-                className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium"
+                className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium flex items-center gap-1.5"
               >
-                Copy Payload JSON
+                {payloadCopied ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-emerald-400">Copied!</span>
+                  </>
+                ) : (
+                  <span>Copy Payload JSON</span>
+                )}
               </button>
               <button
+                type="button"
                 onClick={() => setShowPayloadModal(false)}
                 className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold"
               >

@@ -66,3 +66,13 @@
 * {
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Safe area padding for mobile Android gesture navigation */
+.safe-area-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 10px);
+}
+
+/* Ensure smooth inertial touch scrolling on mobile browsers */
+.overflow-x-auto, .overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+}
