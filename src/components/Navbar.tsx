@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Share2,
   Volume2,
+  Swords,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -16,6 +17,7 @@ interface NavbarProps {
   setCurrentTab: (tab: 'studio' | 'audio-studio' | 'projects' | 'local-engine' | 'api-info') => void;
   onNewProject: () => void;
   onOpenExportModal: () => void;
+  onOpenFightPlanner?: () => void;
   projectCount: number;
   activeProjectTitle: string;
   isSaving?: boolean;
@@ -26,6 +28,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   setCurrentTab,
   onNewProject,
   onOpenExportModal,
+  onOpenFightPlanner,
   projectCount,
   activeProjectTitle,
   isSaving,
@@ -121,6 +124,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             <span>{isSaving ? 'Saving draft...' : 'Draft saved locally'}</span>
           </div>
+
+          {onOpenFightPlanner && (
+            <button
+              onClick={onOpenFightPlanner}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-500/40 rounded-lg transition-colors shadow-sm active:scale-95"
+              title="Plan structured fight choreography"
+            >
+              <Swords className="w-3.5 h-3.5 text-red-400" />
+              <span className="hidden sm:inline">Fight Planner</span>
+            </button>
+          )}
 
           <button
             onClick={onNewProject}

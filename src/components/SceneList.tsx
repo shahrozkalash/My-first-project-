@@ -25,6 +25,7 @@ import {
   Download,
   RefreshCw,
   Sliders,
+  Swords,
 } from 'lucide-react';
 import { CAMERA_MOVEMENTS, LIGHTING_MOODS } from '../data/constants';
 import { Character, Scene, CameraMovement, LightingMood } from '../types';
@@ -51,6 +52,7 @@ interface SceneListProps {
   isRenderingAll?: boolean;
   onOpenEngineSettings?: () => void;
   onOpenAudioStudio?: (sceneIndex: number) => void;
+  onOpenFightPlanner?: () => void;
 }
 
 export const SceneList: React.FC<SceneListProps> = ({
@@ -74,6 +76,7 @@ export const SceneList: React.FC<SceneListProps> = ({
   isRenderingAll,
   onOpenEngineSettings,
   onOpenAudioStudio,
+  onOpenFightPlanner,
 }) => {
   const [expandedScenes, setExpandedScenes] = useState<Record<string, boolean>>({});
 
@@ -159,6 +162,18 @@ export const SceneList: React.FC<SceneListProps> = ({
               Split Evenly (~{Math.round(totalDuration / scenes.length)}s/shot)
             </button>
           )}
+          {onOpenFightPlanner && (
+            <button
+              type="button"
+              onClick={onOpenFightPlanner}
+              className="flex items-center gap-1.5 text-xs font-semibold text-red-200 bg-red-950/40 hover:bg-red-900/60 border border-red-500/40 hover:border-red-400 px-3 py-1.5 rounded-xl transition-all shadow-md shadow-red-900/20 active:scale-95"
+              title="Plan structured combat choreography with local AI"
+            >
+              <Swords className="w-3.5 h-3.5 text-red-400" />
+              <span>Fight Scene</span>
+            </button>
+          )}
+
           <button
             onClick={onAddScene}
             className="flex items-center gap-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 px-3 py-1.5 rounded-xl transition-all shadow-md shadow-blue-600/30 active:scale-95"

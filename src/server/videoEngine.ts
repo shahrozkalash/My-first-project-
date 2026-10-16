@@ -540,6 +540,30 @@ export class WanVideoEngine {
   }
 
   /**
+   * Retrieves supported local LLM models and installation status
+   */
+  public async getLlmModels(): Promise<any> {
+    const endpoint = `${this.config.engineUrl.replace(/\/+$/, '')}/api/llm/models`;
+    const res = await fetch(endpoint, {
+      headers: this.getAuthHeaders(),
+    });
+    return res.json();
+  }
+
+  /**
+   * Calls local helper fight planner with downloaded DeepSeek or Nemotron model
+   */
+  public async generateFightScenePlan(payload: any): Promise<any> {
+    const endpoint = `${this.config.engineUrl.replace(/\/+$/, '')}/api/llm/fight-planner/generate`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return res.json();
+  }
+
+  /**
    * List all local jobs
    */
   public listJobs(): VideoEngineJobStatus[] {

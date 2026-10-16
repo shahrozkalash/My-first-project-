@@ -10,6 +10,7 @@ import { ApiStatusModal } from './components/ApiStatusModal';
 import { ExportModal } from './components/ExportModal';
 import { LocalEnginePage } from './components/LocalEnginePage';
 import { AudioLipSyncStudio } from './components/AudioLipSyncStudio';
+import { FightScenePlannerModal } from './components/FightScenePlannerModal';
 import { localHelperClient } from './utils/localHelperClient';
 import {
   getStoredProjects,
@@ -59,6 +60,7 @@ export default function App() {
   // Modals
   const [isApiModalOpen, setIsApiModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isFightPlannerOpen, setIsFightPlannerOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
   const showToast = (text: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -586,6 +588,7 @@ export default function App() {
         setCurrentTab={setCurrentTab}
         onNewProject={handleNewProject}
         onOpenExportModal={() => setIsExportModalOpen(true)}
+        onOpenFightPlanner={() => setIsFightPlannerOpen(true)}
         projectCount={projects.length}
         activeProjectTitle={currentProject.title}
         isSaving={isSaving}
@@ -725,6 +728,7 @@ export default function App() {
                     onSelectInspiration={(insp) =>
                       updateProject({ ...currentProject, prompt: insp, title: insp.slice(0, 32) + '...' })
                     }
+                    onOpenFightPlanner={() => setIsFightPlannerOpen(true)}
                   />
                 </div>
 
@@ -768,6 +772,7 @@ export default function App() {
                       setSelectedSceneIndex(sceneIdx);
                       setCurrentTab('audio-studio');
                     }}
+                    onOpenFightPlanner={() => setIsFightPlannerOpen(true)}
                   />
                 </div>
               </div>
@@ -820,6 +825,15 @@ export default function App() {
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         project={currentProject}
+      />
+
+      <FightScenePlannerModal
+        isOpen={isFightPlannerOpen}
+        onClose={() => setIsFightPlannerOpen(false)}
+        activeProject={currentProject}
+        onUpdateProject={updateProject}
+        onShowToast={showToast}
+        onNavigateToLocalEngine={() => setCurrentTab('local-engine')}
       />
     </div>
   );

@@ -292,6 +292,20 @@ export class LocalHelperClient {
       body: JSON.stringify(payload),
     });
   }
+
+  // Fight Scene Planner Local LLM APIs
+  public async getLlmModels(): Promise<any> {
+    return this.request('/api/llm/models', {
+      method: 'GET',
+    });
+  }
+
+  public async generateFightScenePlan(payload: any): Promise<any> {
+    return this.request('/api/llm/fight-planner/generate', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
 }
 
 export const localHelperClient = new LocalHelperClient();

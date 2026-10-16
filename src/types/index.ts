@@ -267,6 +267,11 @@ export interface VideoEngineHealth {
     vram_stage_policy: 'separate_stages_recommended' | 'sufficient_vram';
     models: Record<string, AudioModelMeta>;
   };
+  llmEngine?: {
+    activeModel?: string | null;
+    isLoaded: boolean;
+    models: Record<string, LocalLlmModel>;
+  };
   supportedModels: string[];
   supportedResolutions: string[];
   supportedAspectRatios: string[];
@@ -291,3 +296,86 @@ export interface VideoEngineJobStatus {
     createdAt?: string;
   };
 }
+
+export type FightChoreographyStyle =
+  | 'martial-arts'
+  | 'sword-blade-duel'
+  | 'superhero-kinetic'
+  | 'tactical-cqc'
+  | 'cybernetic-melee'
+  | 'swashbuckling-acrobatic';
+
+export type FightPacing =
+  | 'rapid-kinetic'
+  | 'deliberate-tactical'
+  | 'escalating-climax';
+
+export interface FightShot {
+  shotNumber: number;
+  title: string;
+  duration: number; // 2 to 6 seconds per shot
+  characterPositions: string; // e.g., "Alex crouching mid-left; Kane lunging forward right"
+  movementChoreography: string; // Non-graphic cause-and-effect readable kinetic movement
+  expressions: string; // e.g., "Determined focus, eyes locked on parry"
+  cameraMovement: CameraMovement | string;
+  lighting: LightingMood | string;
+  environmentInteraction: string; // e.g., "Sparks spray off reinforced steel girder"
+  transition: string; // e.g., "Match cut on parry impact"
+  dialogue?: string; // Battle line or tactical grunt
+  soundEffects: SoundEffectEvent[];
+  visualPrompt: string; // Rich prompt repeating character identity, clothing, environment & continuity anchors
+  characterIds: string[];
+}
+
+export interface FightScenePlan {
+  id: string;
+  title: string;
+  storyContext: string;
+  combatStyle: FightChoreographyStyle;
+  pacing: FightPacing;
+  environment: string;
+  previousSceneEnding: string;
+  targetTotalDuration: number;
+  visualStyle: VisualStyle;
+  aspectRatio: AspectRatio;
+  characters: Character[];
+  shots: FightShot[];
+  modelUsed: string;
+  createdAt: string;
+  approved: boolean;
+}
+
+export interface FightScenePlanRequest {
+  storyContext: string;
+  combatStyle: FightChoreographyStyle;
+  pacing?: FightPacing;
+  environment: string;
+  previousSceneEnding?: string;
+  targetDuration: number;
+  numShots?: number;
+  visualStyle: VisualStyle;
+  aspectRatio?: AspectRatio;
+  characters: Character[];
+  modelId?: string;
+  preferredProvider?: 'local_helper' | 'heuristic_engine';
+}
+
+export interface LocalLlmModel {
+  id: string;
+  name: string;
+  family: 'deepseek' | 'nvidia-nemotron' | 'qwen';
+  parameters: string;
+  license: string;
+  licenseDetails: string;
+  downloadSizeGb: number;
+  minVramGb: number;
+  minRamGb: number;
+  cpuSupported: boolean;
+  repoId: string;
+  description: string;
+  hardwareTier: 'consumer' | 'enthusiast' | 'cpu_only';
+  downloaded: boolean;
+  compatible: boolean;
+  recommendedFor: string;
+}
+

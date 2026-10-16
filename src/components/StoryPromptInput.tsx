@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Lightbulb,
   Check,
+  Swords,
 } from 'lucide-react';
 import { VISUAL_STYLES, PROMPT_INSPIRATIONS } from '../data/constants';
 import { AspectRatio, VisualStyle, Character } from '../types';
@@ -32,6 +33,7 @@ interface StoryPromptInputProps {
   onGenerateStory: () => Promise<void>;
   generationStepMessage?: string;
   onSelectInspiration: (insp: string) => void;
+  onOpenFightPlanner?: () => void;
 }
 
 export const StoryPromptInput: React.FC<StoryPromptInputProps> = ({
@@ -50,6 +52,7 @@ export const StoryPromptInput: React.FC<StoryPromptInputProps> = ({
   onGenerateStory,
   generationStepMessage,
   onSelectInspiration,
+  onOpenFightPlanner,
 }) => {
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -93,14 +96,28 @@ export const StoryPromptInput: React.FC<StoryPromptInputProps> = ({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowInspirations(!showInspirations)}
-            className="flex items-center gap-1.5 text-xs text-purple-300 hover:text-purple-200 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 px-2.5 py-1 rounded-lg transition-colors"
-          >
-            <Lightbulb className="w-3.5 h-3.5 text-purple-400" />
-            <span>Inspire Me</span>
-          </button>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {onOpenFightPlanner && (
+              <button
+                type="button"
+                onClick={onOpenFightPlanner}
+                className="flex items-center gap-1.5 text-xs text-red-300 hover:text-red-200 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 px-2.5 py-1 rounded-lg transition-colors font-medium shadow-sm shadow-red-500/10"
+                title="Plan structured action choreography using free local LLM"
+              >
+                <Swords className="w-3.5 h-3.5 text-red-400" />
+                <span>Fight Scene Planner</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowInspirations(!showInspirations)}
+              className="flex items-center gap-1.5 text-xs text-purple-300 hover:text-purple-200 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 px-2.5 py-1 rounded-lg transition-colors"
+            >
+              <Lightbulb className="w-3.5 h-3.5 text-purple-400" />
+              <span>Inspire Me</span>
+            </button>
+          </div>
         </div>
 
         {/* Inspirations dropdown */}
@@ -393,12 +410,12 @@ export const StoryPromptInput: React.FC<StoryPromptInputProps> = ({
           </div>
         )}
 
-        {/* 2. Primary Story Generator Action Button */}
-        <div>
+        {/* 2. Generation Action Buttons */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           <button
             type="submit"
             disabled={isGenerating}
-            className={`w-full py-3.5 px-6 rounded-xl font-display font-semibold text-sm text-white flex items-center justify-center gap-2.5 transition-all shadow-xl active:scale-[0.99] ${
+            className={`sm:col-span-2 py-3.5 px-6 rounded-xl font-display font-semibold text-sm text-white flex items-center justify-center gap-2.5 transition-all shadow-xl active:scale-[0.99] ${
               isGenerating
                 ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed border border-zinc-700'
                 : 'bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 shadow-purple-600/30 hover:shadow-purple-500/50 border border-purple-400/30'
@@ -416,6 +433,19 @@ export const StoryPromptInput: React.FC<StoryPromptInputProps> = ({
               </>
             )}
           </button>
+
+          {onOpenFightPlanner && (
+            <button
+              type="button"
+              onClick={onOpenFightPlanner}
+              disabled={isGenerating}
+              className="py-3.5 px-4 rounded-xl font-display font-semibold text-sm text-red-200 bg-red-950/40 hover:bg-red-900/50 border border-red-500/40 hover:border-red-400/60 shadow-lg shadow-red-950/40 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
+              title="Plan a cinematic fight scene with character continuity using free local LLM"
+            >
+              <Swords className="w-4 h-4 text-red-400" />
+              <span>Plan Fight Scene</span>
+            </button>
+          )}
         </div>
       </form>
     </div>

@@ -391,3 +391,135 @@ export const SAMPLE_PROJECTS: Project[] = [
     ],
   },
 ];
+
+export interface FightChoreographyOption {
+  id: import('../types').FightChoreographyStyle;
+  label: string;
+  tagline: string;
+  description: string;
+  badge: string;
+  icon: string;
+  defaultPacing: import('../types').FightPacing;
+  sampleProps: string[];
+}
+
+export const FIGHT_CHOREOGRAPHY_STYLES: FightChoreographyOption[] = [
+  {
+    id: 'martial-arts',
+    label: 'Martial Arts & CQC',
+    tagline: 'Hand-to-hand fluidity',
+    description: 'Crisp blocks, rotational redirects, rapid striking exchanges, and momentum sweeps',
+    badge: 'Kinetic',
+    icon: 'Swords',
+    defaultPacing: 'rapid-kinetic',
+    sampleProps: ['Wooden staff', 'Reinforced gloves', 'Padded bracers', 'Rope dart'],
+  },
+  {
+    id: 'sword-blade-duel',
+    label: 'Blade & Plasma Duel',
+    tagline: 'Precision swordplay',
+    description: 'Sparks from parrying edges, deliberate blade binds, sudden thrusts, and evasive sidesteps',
+    badge: 'Sharp Precision',
+    icon: 'Shield',
+    defaultPacing: 'deliberate-tactical',
+    sampleProps: ['Katana', 'Energy saber', 'Rapier', 'Steel longsword'],
+  },
+  {
+    id: 'superhero-kinetic',
+    label: 'Superhero Kinetic',
+    tagline: 'Heavy impact & aerials',
+    description: 'Shockwave collisions, cratering impacts into concrete, acrobatics, and kinetic momentum',
+    badge: 'High Impact',
+    icon: 'Zap',
+    defaultPacing: 'escalating-climax',
+    sampleProps: ['Energy shield', 'Magnetic gauntlets', 'Debris rubble', 'Reinforced pillars'],
+  },
+  {
+    id: 'tactical-cqc',
+    label: 'Gritty Tactical CQC',
+    tagline: 'Grounded close quarters',
+    description: 'Disarms, joint control, environment corner traps, and intense close-quarters survival',
+    badge: 'Realistic CQC',
+    icon: 'Target',
+    defaultPacing: 'deliberate-tactical',
+    sampleProps: ['Tactical baton', 'Body armor vest', 'Stun rod', 'Riot shield'],
+  },
+  {
+    id: 'cybernetic-melee',
+    label: 'Cybernetic Melee',
+    tagline: 'Overclocked servos & sparks',
+    description: 'Hydraulic punch counters, electric discharge on block, glitching optics, and neon sparks',
+    badge: 'Cybernetic',
+    icon: 'Cpu',
+    defaultPacing: 'rapid-kinetic',
+    sampleProps: ['Overclocked prosthetic arm', 'Thermal blade', 'EMP pulse knuckles', 'Exo-spine'],
+  },
+  {
+    id: 'swashbuckling-acrobatic',
+    label: 'Swashbuckling Acrobatic',
+    tagline: 'High-flying terrain parkour',
+    description: 'Swinging from rigging, vaulting over tables, elegant feints, and witty battle banter',
+    badge: 'Acrobatic',
+    icon: 'Flame',
+    defaultPacing: 'rapid-kinetic',
+    sampleProps: ['Cutlass', 'Tapestry rope', 'Tavern bench', 'Chandelier swing'],
+  },
+];
+
+export const SUPPORTED_LOCAL_LLM_MODELS: import('../types').LocalLlmModel[] = [
+  {
+    id: 'deepseek-r1-distill-qwen-1.5b',
+    name: 'DeepSeek-R1-Distill-Qwen-1.5B',
+    family: 'deepseek',
+    parameters: '1.5B',
+    license: 'MIT License',
+    licenseDetails: 'Completely free & open weights under MIT license by DeepSeek AI (Permissive for all uses)',
+    downloadSizeGb: 2.9,
+    minVramGb: 2.0,
+    minRamGb: 4.0,
+    cpuSupported: true,
+    repoId: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B',
+    description: 'Ultra-lightweight reasoning model. Plans shot-by-shot cause-and-effect fight choreography with low memory overhead.',
+    hardwareTier: 'consumer',
+    downloaded: false,
+    compatible: true,
+    recommendedFor: 'NVIDIA GPUs with 4GB-8GB VRAM or fast multi-threaded CPU inference',
+  },
+  {
+    id: 'deepseek-r1-distill-qwen-7b',
+    name: 'DeepSeek-R1-Distill-Qwen-7B',
+    family: 'deepseek',
+    parameters: '7B',
+    license: 'MIT License',
+    licenseDetails: 'Free open weights under MIT license by DeepSeek AI (Permissive for commercial & private research)',
+    downloadSizeGb: 14.2,
+    minVramGb: 6.0,
+    minRamGb: 16.0,
+    cpuSupported: false,
+    repoId: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B',
+    description: 'High-reasoning 7B distilled model with advanced kinetic spatial awareness, momentum physics, and detailed continuity cues.',
+    hardwareTier: 'enthusiast',
+    downloaded: false,
+    compatible: false,
+    recommendedFor: 'NVIDIA GPUs with 8GB-16GB+ VRAM',
+  },
+  {
+    id: 'nvidia-nemotron-nano-4b',
+    name: 'NVIDIA Nemotron-Nano-4B-Instruct',
+    family: 'nvidia-nemotron',
+    parameters: '4B',
+    license: 'NVIDIA Open Model License / Apache 2.0',
+    licenseDetails: 'Permissive license for commercial and non-commercial deployment by NVIDIA',
+    downloadSizeGb: 8.0,
+    minVramGb: 4.5,
+    minRamGb: 8.0,
+    cpuSupported: true,
+    repoId: 'nvidia/Llama-3.1-Nemotron-Nano-4B-Instruct',
+    description: 'Specialized 4B instruction model optimized for structured JSON outputs, complex cinematic camera blocking, and physical choreography.',
+    hardwareTier: 'consumer',
+    downloaded: false,
+    compatible: true,
+    recommendedFor: 'NVIDIA RTX GPUs with 6GB-12GB VRAM',
+  },
+];
+

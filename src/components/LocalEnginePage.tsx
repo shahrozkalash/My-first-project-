@@ -23,9 +23,11 @@ import {
   Square,
   AlertOctagon,
   Unplug,
+  Swords,
 } from 'lucide-react';
-import { Project, Scene, VideoEngineHealth } from '../types';
+import { Project, Scene, VideoEngineHealth, LocalLlmModel } from '../types';
 import { localHelperClient } from '../utils/localHelperClient';
+import { SUPPORTED_LOCAL_LLM_MODELS } from '../data/constants';
 
 export type EngineStatusState =
   | 'Not Installed'
@@ -1065,6 +1067,79 @@ export const LocalEnginePage: React.FC<LocalEnginePageProps> = ({
                     <div>Zero-cost local tool</div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Fight Scene Planner Local LLM Models Section */}
+            <div className="pt-6 border-t border-zinc-800 space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h4 className="text-sm font-bold text-white font-display flex items-center gap-2">
+                    <Swords className="w-4 h-4 text-red-400" />
+                    <span>Fight Scene Planner Models (DeepSeek / NVIDIA Nemotron)</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                      100% Free & Open Weights
+                    </span>
+                  </h4>
+                  <p className="text-xs text-zinc-400">
+                    Locally hosted language models for structured non-graphic action choreography and character continuity planning.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                {SUPPORTED_LOCAL_LLM_MODELS.map((model) => {
+                  const isDl = Boolean(engineHealth?.llmEngine?.models?.[model.id]?.downloaded);
+                  const isCompat = Boolean(engineHealth?.llmEngine?.models?.[model.id]?.compatible ?? model.compatible);
+
+                  return (
+                    <div key={model.id} className="p-3.5 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-2.5 flex flex-col justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-white text-xs font-mono">{model.name}</span>
+                          <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                            isDl ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30' : 'bg-zinc-800 text-zinc-400'
+                          }`}>
+                            {isDl ? 'Installed' : 'Needs Download'}
+                          </span>
+                        </div>
+                        <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-purple-500/10 text-purple-300">
+                          {model.license}
+                        </span>
+                        <p className="text-zinc-400 text-[11px] leading-relaxed">
+                          {model.description}
+                        </p>
+                      </div>
+
+                      <div className="space-y-2 pt-2 border-t border-zinc-800 text-[10px] text-zinc-400 font-mono">
+                        <div className="flex justify-between">
+                          <span>VRAM Min:</span>
+                          <span className="text-white">{model.minVramGb} GB</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Download Size:</span>
+                          <span className="text-white">~{model.downloadSizeGb} GB</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Hardware Check:</span>
+                          <span className={isCompat ? 'text-emerald-400' : 'text-amber-400'}>
+                            {isCompat ? 'Compatible with your system' : 'High VRAM requirements'}
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadModel(model.id)}
+                          disabled={isDownloading || !engineHealth?.reachable}
+                          className="w-full mt-1 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-zinc-200 hover:text-white font-medium text-[11px] flex items-center justify-center gap-1.5 border border-zinc-700 transition-colors"
+                        >
+                          <Download className="w-3 h-3 text-purple-400" />
+                          <span>{isDl ? 'Re-Download Weights' : `Download ${model.parameters}`}</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

@@ -28,6 +28,8 @@ MODELS_DIR = BASE_DIR / "models"
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 AUDIO_MODELS_DIR = BASE_DIR / "models" / "audio"
 AUDIO_MODELS_DIR.mkdir(parents=True, exist_ok=True)
+LLM_MODELS_DIR = BASE_DIR / "models" / "llm"
+LLM_MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
 OUTPUT_DIR = BASE_DIR / "generated_videos"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -206,6 +208,67 @@ SUPPORTED_AUDIO_MODELS = {
     },
 }
 
+# Supported official open-source local LLM models for Fight Scene Planning
+SUPPORTED_LLM_MODELS = {
+    "deepseek-r1-distill-qwen-1.5b": {
+        "name": "DeepSeek-R1-Distill-Qwen-1.5B",
+        "family": "deepseek",
+        "parameters": "1.5B",
+        "repo_id": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+        "license": "MIT License",
+        "license_details": "Completely free & open weights under MIT license by DeepSeek AI (Permissive for all uses)",
+        "download_size_gb": 2.9,
+        "min_vram_gb": 2.0,
+        "min_ram_gb": 4.0,
+        "cpu_supported": True,
+        "description": "Ultra-lightweight reasoning model. Plans shot-by-shot cause-and-effect fight choreography with low memory overhead.",
+        "hardware_tier": "consumer",
+        "recommended_for": "NVIDIA GPUs with 4GB-8GB VRAM or fast multi-threaded CPU inference",
+    },
+    "deepseek-r1-distill-qwen-7b": {
+        "name": "DeepSeek-R1-Distill-Qwen-7B",
+        "family": "deepseek",
+        "parameters": "7B",
+        "repo_id": "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
+        "license": "MIT License",
+        "license_details": "Free open weights under MIT license by DeepSeek AI (Permissive for commercial & private research)",
+        "download_size_gb": 14.2,
+        "min_vram_gb": 6.0,
+        "min_ram_gb": 16.0,
+        "cpu_supported": False,
+        "description": "High-reasoning 7B distilled model with advanced kinetic spatial awareness, momentum physics, and detailed continuity cues.",
+        "hardware_tier": "enthusiast",
+        "recommended_for": "NVIDIA GPUs with 8GB-16GB+ VRAM",
+    },
+    "nvidia-nemotron-nano-4b": {
+        "name": "NVIDIA Nemotron-Nano-4B-Instruct",
+        "family": "nvidia-nemotron",
+        "parameters": "4B",
+        "repo_id": "nvidia/Llama-3.1-Nemotron-Nano-4B-Instruct",
+        "license": "NVIDIA Open Model License / Apache 2.0",
+        "license_details": "Permissive license for commercial and non-commercial deployment by NVIDIA",
+        "download_size_gb": 8.0,
+        "min_vram_gb": 4.5,
+        "min_ram_gb": 8.0,
+        "cpu_supported": True,
+        "description": "Specialized 4B instruction model optimized for structured JSON outputs, complex cinematic camera blocking, and physical choreography.",
+        "hardware_tier": "consumer",
+        "recommended_for": "NVIDIA RTX GPUs with 6GB-12GB VRAM",
+    },
+}
+
+def check_llm_model_downloaded(model_id: str) -> bool:
+    target_dir = LLM_MODELS_DIR / model_id
+    if not target_dir.exists():
+        return False
+    return (
+        (target_dir / "config.json").exists()
+        or any(target_dir.glob("*.safetensors"))
+        or any(target_dir.glob("*.bin"))
+        or any(target_dir.glob("*.gguf"))
+    )
+
+
 def get_ffmpeg_path() -> Optional[str]:
     """Locates system or bundled ffmpeg binary."""
     path = shutil.which("ffmpeg")
@@ -319,6 +382,15 @@ def system_check():
             "compatible": a_meta["cpu_supported"] or (hw["cuda_available"] and hw["vram_total_gb"] >= a_meta["min_vram_gb"]),
         }
 
+    llm_models_status = {}
+    for l_id, l_meta in SUPPORTED_LLM_MODELS.items():
+        is_dl = check_llm_model_downloaded(l_id)
+        llm_models_status[l_id] = {
+            **l_meta,
+            "downloaded": is_dl,
+            "compatible": l_meta["cpu_supported"] or (hw["cuda_available"] and hw["vram_total_gb"] >= l_meta["min_vram_gb"]),
+        }
+
     ffmpeg_bin = get_ffmpeg_path()
 
     # VRAM Staging policy: recommend separate stages if consumer GPU has < 16GB VRAM
@@ -345,6 +417,9 @@ def system_check():
             "vram_stage_policy": vram_stage_policy,
             "models": audio_models_status,
         },
+        "llmEngine": {
+            "models": llm_models_status,
+        },
     }
 
 # 2. Get Pairing Token
@@ -359,10 +434,16 @@ def get_token(request: Request):
 class DownloadModelRequest(BaseModel):
     model_id: str
 
-def run_download_task(model_id: str, repo_id: str, is_audio: bool = False):
+def run_download_task(model_id: str, repo_id: str, category: str = "video"):
     global download_state
-    log(f"Starting download for {model_id} from {repo_id}...", "INFO", "Downloader")
-    target_dir = (AUDIO_MODELS_DIR if is_audio else MODELS_DIR) / model_id
+    log(f"Starting download for {model_id} ({category}) from {repo_id}...", "INFO", "Downloader")
+    if category == "audio":
+        target_dir = AUDIO_MODELS_DIR / model_id
+    elif category == "llm":
+        target_dir = LLM_MODELS_DIR / model_id
+    else:
+        target_dir = MODELS_DIR / model_id
+
     target_dir.mkdir(parents=True, exist_ok=True)
 
     try:
@@ -390,11 +471,18 @@ def run_download_task(model_id: str, repo_id: str, is_audio: bool = False):
 @app.post("/api/models/download")
 def download_model(req: DownloadModelRequest, background_tasks: BackgroundTasks):
     global download_state
-    is_audio = req.model_id in SUPPORTED_AUDIO_MODELS
-    if req.model_id not in SUPPORTED_MODELS and not is_audio:
+    category = "video"
+    if req.model_id in SUPPORTED_AUDIO_MODELS:
+        category = "audio"
+        model_meta = SUPPORTED_AUDIO_MODELS[req.model_id]
+    elif req.model_id in SUPPORTED_LLM_MODELS:
+        category = "llm"
+        model_meta = SUPPORTED_LLM_MODELS[req.model_id]
+    elif req.model_id in SUPPORTED_MODELS:
+        category = "video"
+        model_meta = SUPPORTED_MODELS[req.model_id]
+    else:
         raise HTTPException(status_code=400, detail="Invalid model ID.")
-
-    model_meta = SUPPORTED_AUDIO_MODELS[req.model_id] if is_audio else SUPPORTED_MODELS[req.model_id]
 
     # Disk space check
     hw = get_hardware_info()
@@ -412,6 +500,7 @@ def download_model(req: DownloadModelRequest, background_tasks: BackgroundTasks)
         download_state = {
             "is_downloading": True,
             "model_id": req.model_id,
+            "category": category,
             "progress_percent": 5.0,
             "downloaded_bytes": 0,
             "total_bytes": int(required_gb * (1024 ** 3)),
@@ -421,10 +510,11 @@ def download_model(req: DownloadModelRequest, background_tasks: BackgroundTasks)
             "cancel_requested": False,
         }
 
-    background_tasks.add_task(run_download_task, req.model_id, model_meta["repo_id"], is_audio)
+    background_tasks.add_task(run_download_task, req.model_id, model_meta["repo_id"], category)
     return {
         "status": "started",
         "model_id": req.model_id,
+        "category": category,
         "message": f"Downloading {model_meta['name']} from official Hugging Face repository...",
     }
 
@@ -913,6 +1003,173 @@ def clear_logs():
     with logs_lock:
         logs_buffer.clear()
     return {"status": "cleared"}
+
+# ==========================================
+# 10. Local LLM Models & Fight Scene Planner
+# ==========================================
+class FightScenePlanRequestPayload(BaseModel):
+    storyContext: str
+    combatStyle: Optional[str] = "martial-arts"
+    pacing: Optional[str] = "rapid-kinetic"
+    environment: str
+    previousSceneEnding: Optional[str] = ""
+    targetDuration: Optional[int] = 30
+    numShots: Optional[int] = 4
+    visualStyle: Optional[str] = "cinematic"
+    aspectRatio: Optional[str] = "16:9"
+    characters: Optional[List[Dict[str, Any]]] = None
+    modelId: Optional[str] = "deepseek-r1-distill-qwen-1.5b"
+
+@app.get("/api/llm/models")
+def get_llm_models():
+    """Lists supported free, local open-source LLM models with verified licenses and hardware requirements."""
+    hw = get_hardware_info()
+    models_status = {}
+    for m_id, m_meta in SUPPORTED_LLM_MODELS.items():
+        is_dl = check_llm_model_downloaded(m_id)
+        is_compat = m_meta["cpu_supported"] or (hw["cuda_available"] and hw["vram_total_gb"] >= m_meta["min_vram_gb"])
+        models_status[m_id] = {
+            **m_meta,
+            "downloaded": is_dl,
+            "compatible": is_compat,
+            "min_ram_gb": m_meta.get("min_ram_gb", 8.0),
+        }
+    return {
+        "status": "ok",
+        "models": models_status,
+        "defaultModel": "deepseek-r1-distill-qwen-1.5b",
+        "hardware": hw,
+        "zeroCost": True,
+    }
+
+@app.post("/api/llm/fight-planner/generate")
+def generate_fight_plan_local(req: FightScenePlanRequestPayload):
+    """
+    Zero-Cost, 100% Local Fight Scene Planner using downloaded DeepSeek or NVIDIA Nemotron models.
+    Honest reporting: Returns clear setup message if model weights are not downloaded on this PC.
+    """
+    model_id = req.modelId or "deepseek-r1-distill-qwen-1.5b"
+    if model_id not in SUPPORTED_LLM_MODELS:
+        raise HTTPException(status_code=400, detail=f"Unsupported model ID: {model_id}")
+
+    model_meta = SUPPORTED_LLM_MODELS[model_id]
+    is_downloaded = check_llm_model_downloaded(model_id)
+
+    log(f"Fight Scene Planner request with model '{model_id}' (Downloaded: {is_downloaded})", "INFO", "FightPlanner")
+
+    # Honest requirement: If no model is installed, do NOT fabricate success!
+    if not is_downloaded:
+        log(f"Local model {model_id} weights not installed in {LLM_MODELS_DIR / model_id}", "WARN", "FightPlanner")
+        return {
+            "success": False,
+            "status": "model_not_installed",
+            "error": "MODEL_NOT_INSTALLED",
+            "message": f"Local model '{model_meta['name']}' is not installed on this PC. Please download model weights ({model_meta['download_size_gb']} GB, {model_meta['license']}) in the Local Engine tab. StoryMotion AI never sends private story data to paid cloud APIs.",
+            "modelId": model_id,
+            "modelMeta": model_meta,
+            "hardwareRequired": f"{model_meta['min_vram_gb']}GB VRAM (or multi-threaded CPU)" if model_meta["cpu_supported"] else f"{model_meta['min_vram_gb']}GB dedicated NVIDIA VRAM",
+            "license": model_meta["license"],
+            "downloadAction": f"/api/models/download (model_id: {model_id})",
+        }
+
+    # If model is downloaded, attempt local model inference pipeline
+    model_dir = LLM_MODELS_DIR / model_id
+    try:
+        import torch
+        from transformers import AutoTokenizer, AutoModelForCausalLM
+
+        log(f"Loading local weights for {model_id} from {model_dir}...", "INFO", "FightPlanner")
+        tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
+        model = AutoModelForCausalLM.from_pretrained(
+            str(model_dir),
+            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+            device_map="auto" if torch.cuda.is_available() else "cpu",
+        )
+
+        char_names = [c.get("name", "Fighter") for c in (req.characters or [])]
+        char_desc_list = [f"- {c.get('name', 'Fighter')} ({c.get('role', 'Combatant')}): {c.get('visualDescription', '')}. Attire: {c.get('attire', '')}. Weapon: {c.get('keyProps', 'None')}" for c in (req.characters or [])]
+
+        system_prompt = (
+            "You are an elite Hollywood fight choreographer and cinematic action director. "
+            "Generate a structured, non-graphic, highly readable fight scene plan with clear cause-and-effect kinetics. "
+            "Maintain strict character visual and attire continuity in each shot's visualPrompt. "
+            "Output MUST be valid JSON adhering strictly to the requested schema with no markdown or additional text."
+        )
+
+        user_content = f"""Plan a {req.combatStyle} fight scene in {req.environment}.
+Previous Scene Ending: {req.previousSceneEnding or 'Characters confront each other at close range'}
+Visual Style: {req.visualStyle}
+Aspect Ratio: {req.aspectRatio}
+Target Duration: {req.targetDuration}s total across {req.numShots or 4} sequential connected shots.
+Fighters:
+{chr(10).join(char_desc_list)}
+
+Return a JSON object with:
+{{
+  "title": "Fight scene title",
+  "shots": [
+    {{
+      "shotNumber": 1,
+      "title": "Shot name",
+      "duration": 4,
+      "characterPositions": "Positions of fighters in frame",
+      "movementChoreography": "Clear non-graphic cause-and-effect action movement (parries, evasions, counter-strikes)",
+      "expressions": "Facial tension and focus",
+      "cameraMovement": "Camera motion",
+      "lighting": "Lighting mood",
+      "environmentInteraction": "Interactions with debris/props",
+      "transition": "Transition to next shot",
+      "dialogue": "Combat line or tactical retort",
+      "soundEffects": [
+        {{"name": "Clash / Impact", "category": "impact", "startTime": 1.0, "duration": 1.5, "volume": 0.8, "soundType": "impact_whoosh", "description": "Sound description"}}
+      ],
+      "visualPrompt": "Detailed WAN 2.1 video prompt repeating character attire, appearance, environment, lighting and camera movement"
+    }}
+  ]
+}}"""
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},
+        ]
+        text_input = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        inputs = tokenizer([text_input], return_tensors="pt").to(model.device)
+
+        with torch.no_grad():
+            outputs = model.generate(
+                **inputs,
+                max_new_tokens=2048,
+                temperature=0.3,
+                top_p=0.9,
+                do_sample=True,
+            )
+
+        response_text = tokenizer.decode(outputs[0][len(inputs.input_ids[0]):], skip_special_tokens=True).strip()
+        # Clean any markdown code blocks
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+
+        parsed = json.loads(response_text.strip())
+        return {
+            "success": True,
+            "status": "completed",
+            "plan": parsed,
+            "modelUsed": model_id,
+            "engine": "local_hardware_llm",
+            "zeroCost": True,
+        }
+    except Exception as e:
+        log(f"Local LLM generation failed: {e}", "ERROR", "FightPlanner")
+        return {
+            "success": False,
+            "status": "execution_error",
+            "error": str(e),
+            "message": f"Local LLM execution failed: {e}. Ensure PyTorch CUDA and transformers are installed in windows-helper.",
+        }
 
 if __name__ == "__main__":
     hw = get_hardware_info()

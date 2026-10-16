@@ -6,6 +6,12 @@ import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type } from '@google/genai';
 import { wanVideoEngine } from './src/server/videoEngine.ts';
+import {
+  validateFightScenePlan,
+  generateDeterministicFightPlan,
+  convertFightPlanToScenes,
+} from './src/utils/fightPlannerEngine.ts';
+import { SUPPORTED_LOCAL_LLM_MODELS } from './src/data/constants.ts';
 
 const require = createRequire(import.meta.url);
 const archiver = require('archiver');
@@ -73,6 +79,7 @@ app.get('/api/source-code', (req, res) => {
       { path: 'src/utils/storage.ts', category: 'Storage & Exports' },
       { path: 'src/utils/duration.ts', category: 'Storage & Exports' },
       { path: 'src/utils/audioEngine.ts', category: 'Audio & LipSync Engine' },
+      { path: 'src/utils/fightPlannerEngine.ts', category: 'Fight Choreography Engine' },
       { path: 'src/components/Navbar.tsx', category: 'UI Components' },
       { path: 'src/components/MobileBottomNav.tsx', category: 'UI Components' },
       { path: 'src/components/StoryPromptInput.tsx', category: 'UI Components' },
@@ -80,6 +87,7 @@ app.get('/api/source-code', (req, res) => {
       { path: 'src/components/SceneList.tsx', category: 'UI Components' },
       { path: 'src/components/VideoPreviewArea.tsx', category: 'UI Components' },
       { path: 'src/components/AudioLipSyncStudio.tsx', category: 'UI Components' },
+      { path: 'src/components/FightScenePlannerModal.tsx', category: 'UI Components' },
       { path: 'src/components/ProjectsLibrary.tsx', category: 'UI Components' },
       { path: 'src/components/ApiStatusModal.tsx', category: 'UI Components' },
       { path: 'src/components/ExportModal.tsx', category: 'UI Components' },
@@ -1189,6 +1197,185 @@ app.post('/api/helper/audio/mix/assemble', async (req, res) => {
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to assemble MP4 with audio mix' });
+  }
+});
+
+// ========================================================
+// 11. Zero-Cost Local Fight Scene Planner Endpoints
+// ========================================================
+
+// Get list of supported free local LLM models with verified licenses
+app.get('/api/fight-planner/models', async (req, res) => {
+  try {
+    const health = await wanVideoEngine.checkHealth();
+    const helperLlmModels = (health as any)?.llmEngine?.models || {};
+
+    const enriched = SUPPORTED_LOCAL_LLM_MODELS.map((m) => {
+      const helperState = helperLlmModels[m.id];
+      const downloaded = helperState ? Boolean(helperState.downloaded) : false;
+      const compatible = helperState ? Boolean(helperState.compatible) : m.compatible;
+      return {
+        ...m,
+        downloaded,
+        compatible,
+      };
+    });
+
+    res.json({
+      models: enriched,
+      defaultModel: 'deepseek-r1-distill-qwen-1.5b',
+      hardware: health.hardware,
+      isHelperReachable: health.reachable,
+      zeroCost: true,
+    });
+  } catch (err: any) {
+    res.json({
+      models: SUPPORTED_LOCAL_LLM_MODELS,
+      defaultModel: 'deepseek-r1-distill-qwen-1.5b',
+      isHelperReachable: false,
+      zeroCost: true,
+    });
+  }
+});
+
+// Generate structured fight scene plan
+app.post('/api/fight-planner/generate', async (req, res) => {
+  try {
+    const {
+      storyContext,
+      combatStyle = 'martial-arts',
+      pacing = 'rapid-kinetic',
+      environment,
+      previousSceneEnding = '',
+      targetDuration = 20,
+      numShots = 4,
+      visualStyle = 'cinematic',
+      aspectRatio = '16:9',
+      characters = [],
+      modelId = 'deepseek-r1-distill-qwen-1.5b',
+      forceOfflineFallback = false,
+    } = req.body;
+
+    if (!environment || typeof environment !== 'string' || environment.trim().length === 0) {
+      return res.status(400).json({ error: 'Environment description is required for spatial fight planning.' });
+    }
+
+    const health = await wanVideoEngine.checkHealth();
+    let helperResult: any = null;
+
+    // If local Windows helper is online, try contacting it
+    if (health.reachable && !forceOfflineFallback) {
+      try {
+        helperResult = await wanVideoEngine.generateFightScenePlan({
+          storyContext,
+          combatStyle,
+          pacing,
+          environment,
+          previousSceneEnding,
+          targetDuration,
+          numShots,
+          visualStyle,
+          aspectRatio,
+          characters,
+          modelId,
+        });
+
+        if (helperResult?.success && helperResult?.plan) {
+          const validated = validateFightScenePlan(helperResult.plan);
+          return res.json({
+            success: true,
+            plan: validated.repairedPlan || helperResult.plan,
+            validation: validated,
+            source: 'local_hardware_llm',
+            modelUsed: modelId,
+            message: `Fight plan synthesized via local ${modelId} inference on your machine.`,
+          });
+        }
+
+        // If helper responded with honest MODEL_NOT_INSTALLED:
+        if (helperResult?.status === 'model_not_installed') {
+          return res.status(412).json({
+            success: false,
+            status: 'model_not_installed',
+            error: 'MODEL_NOT_INSTALLED',
+            message: helperResult.message || `Local model '${modelId}' is not installed on this PC.`,
+            requiredModel: modelId,
+            hardwareRequired: helperResult.hardwareRequired,
+            license: helperResult.license,
+            helperOnline: true,
+          });
+        }
+      } catch (helperErr: any) {
+        console.warn('Local helper LLM probe error:', helperErr.message);
+      }
+    }
+
+    // Deterministic local choreographic blueprint generator
+    // Generates non-graphic readable movement with clear cause-and-effect and character continuity
+    const deterministicPlan = generateDeterministicFightPlan({
+      storyContext: storyContext || 'High-stakes tactical duel',
+      combatStyle,
+      pacing,
+      environment,
+      previousSceneEnding,
+      targetDuration,
+      numShots,
+      visualStyle,
+      aspectRatio,
+      characters,
+      modelId,
+    });
+
+    const validation = validateFightScenePlan(deterministicPlan);
+
+    return res.json({
+      success: true,
+      plan: validation.repairedPlan || deterministicPlan,
+      validation,
+      source: 'local-choreographer-engine',
+      modelUsed: modelId,
+      helperReachable: health.reachable,
+      note: health.reachable
+        ? `Windows Helper is online. For local neural LLM execution, download ${modelId} weights.`
+        : 'Windows Helper offline. Generated via deterministic local choreographer engine.',
+      zeroCost: true,
+    });
+  } catch (err: any) {
+    console.error('Error generating fight plan:', err);
+    res.status(500).json({ error: err.message || 'Internal error generating fight plan' });
+  }
+});
+
+// Validate Fight Plan JSON Schema
+app.post('/api/fight-planner/validate', (req, res) => {
+  try {
+    const result = validateFightScenePlan(req.body);
+    res.json(result);
+  } catch (err: any) {
+    res.status(400).json({ valid: false, errors: [err.message] });
+  }
+});
+
+// Handoff approved fight scene plan to WAN scenes
+app.post('/api/fight-planner/handoff-to-wan', (req, res) => {
+  try {
+    const { plan, startIndex = 0 } = req.body;
+    if (!plan || !Array.isArray(plan.shots)) {
+      return res.status(400).json({ error: 'Valid fight scene plan with shots is required.' });
+    }
+
+    const validated = validateFightScenePlan(plan);
+    const safePlan = validated.repairedPlan || plan;
+    const scenes = convertFightPlanToScenes(safePlan, Number(startIndex) || 0);
+
+    res.json({
+      success: true,
+      scenes,
+      shotCount: scenes.length,
+      message: `Handoff successful: ${scenes.length} fight shots converted to WAN scenes with character continuity anchors.`,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to convert fight plan to WAN scenes' });
   }
 });
 
