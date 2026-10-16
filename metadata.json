@@ -1,0 +1,6 @@
+{
+  "name": "StoryMotion AI",
+  "description": "AI video generation and story-planning studio with character consistency, sequential scene direction, and Veo-ready video pipeline.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
