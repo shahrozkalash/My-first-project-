@@ -43,11 +43,51 @@ import {
   Wand2,
 } from 'lucide-react';
 
+type TabRoute = 'studio' | 'audio-studio' | 'projects' | 'local-engine' | 'api-info';
+
+function getTabFromHash(): TabRoute {
+  if (typeof window === 'undefined') return 'studio';
+  const raw = window.location.hash.replace(/^#\/?/, '').split('?')[0].trim().toLowerCase();
+  if (raw === 'audio-studio' || raw === 'audio') return 'audio-studio';
+  if (raw === 'projects' || raw === 'library') return 'projects';
+  if (raw === 'local-engine' || raw === 'engine' || raw === 'wan') return 'local-engine';
+  if (raw === 'api-info' || raw === 'api') return 'api-info';
+  return 'studio';
+}
+
 export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveId] = useState<string>('');
-  const [currentTab, setCurrentTab] = useState<'studio' | 'audio-studio' | 'projects' | 'local-engine' | 'api-info'>('studio');
+  const [currentTab, setCurrentTabState] = useState<TabRoute>(() => getTabFromHash());
   const [mobileSection, setMobileSection] = useState<MobileStudioSection>('prompt');
+
+  // HashRouter-compatible navigation helper
+  const setCurrentTab = (tab: TabRoute) => {
+    setCurrentTabState(tab);
+    if (typeof window !== 'undefined') {
+      const targetHash = `#/${tab}`;
+      if (window.location.hash !== targetHash) {
+        window.location.hash = targetHash;
+      }
+    }
+  };
+
+  // Synchronize browser history / hash navigation with tab state
+  useEffect(() => {
+    const handleHashChange = () => {
+      const tabFromHash = getTabFromHash();
+      setCurrentTabState(tabFromHash);
+    };
+
+    if (typeof window !== 'undefined') {
+      if (!window.location.hash || window.location.hash === '#' || window.location.hash === '#/') {
+        window.history.replaceState(null, '', `${window.location.pathname}#/${currentTab}`);
+      }
+    }
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [currentTab]);
 
   // Active project state
   const [currentProject, setCurrentProject] = useState<Project>(createNewProjectTemplate());

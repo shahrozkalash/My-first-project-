@@ -13,14 +13,19 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <script>
+      // HashRouter-compatible redirect for GitHub Pages SPA hosting
       (function(l) {
         if (l.search[1] === '/' ) {
           var decoded = l.search.slice(1).split('&').map(function(s) { 
             return s.replace(/~and~/g, '&');
           }).join('?');
+          var cleanRoute = decoded.replace(/^\//, '');
+          var targetHash = cleanRoute ? '#/' + cleanRoute : '#/studio';
           window.history.replaceState(null, null,
-              l.pathname.slice(0, -1) + decoded + l.hash
+              l.pathname + targetHash
           );
+        } else if (!l.hash || l.hash === '#' || l.hash === '#/') {
+          window.history.replaceState(null, null, l.pathname + '#/studio');
         }
       }(window.location));
     </script>

@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { defineConfig } from 'vite';
 
-const currentDir = typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
+const currentDir = import.meta.dirname || (typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url)));
 
 export default defineConfig(({ mode }) => {
   const isGitHubPages =
@@ -12,8 +12,14 @@ export default defineConfig(({ mode }) => {
     process.env.GITHUB_PAGES === 'true' ||
     process.env.BUILD_FOR_GH_PAGES === 'true';
 
-  // Base path for GitHub Pages target repository "storymontionai"
-  const base = process.env.BASE_PATH || (isGitHubPages ? '/storymontionai/' : './');
+  // Base path for GitHub Pages - auto-detects from GitHub environment or defaults to /storymontionai/
+  const repoName = process.env.GITHUB_REPOSITORY
+    ? `/${process.env.GITHUB_REPOSITORY.split('/')[1]}/`
+    : '/storymontionai/';
+
+  const rawBase = process.env.BASE_PATH || (isGitHubPages ? repoName : './');
+  // Ensure base path always strictly ends with a trailing slash for GitHub Pages asset resolution
+  const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
 
   return {
     base,
